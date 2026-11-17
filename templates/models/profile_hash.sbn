@@ -1,0 +1,18 @@
+using System.Security.Cryptography;
+using System.Text;
+
+{{ ns_open (meta.root_namespace + ".Infrastructure") }}
+
+/// <summary>
+/// Задача 17: публичните профилни URL-и не показват суровия ASP.NET Identity Guid директно -
+/// вместо него използваме кратък детерминиран хеш. Same input -> same hash винаги (не се пази
+/// никъде отделно), контролерът обхожда потребителите и сравнява хешовете при търсене.
+/// Не е криптографска защита (ID-то технически е обратимо чрез груба сила върху малък брой
+/// потребители) - целта е само да не се показва суровият Guid директно в адресната лента.
+/// </summary>
+public static class ProfileHash
+{
+    public static string Of(string userId) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(userId)))[..12].ToLowerInvariant();
+}
+{{ ns_close }}

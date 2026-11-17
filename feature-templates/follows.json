@@ -1,0 +1,41 @@
+{
+  "models": [
+    {
+      "name": "Follow",
+      "file": "Models/Follow.cs",
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "FollowerUserId",
+          "type": "string",
+          "displayName": "Последовател",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Последователят е задължителен."
+            }
+          ]
+        },
+        {
+          "name": "FollowedUserId",
+          "type": "string",
+          "displayName": "Последван",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Последваният е задължителен."
+            }
+          ]
+        }
+      ],
+      "relations": [],
+      "displayName": "Последвания"
+    }
+  ],
+  "dtos": [],
+  "controllers": []
+}

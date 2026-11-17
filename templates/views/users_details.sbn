@@ -1,0 +1,59 @@
+@model {{ meta.root_namespace }}.Models.UserProfileViewModel
+@{
+    ViewData["Title"] = "Потребител";
+    // Връзките в споделения партиал да сочат към админ детайлите на записите.
+    ViewData["AdminLinks"] = true;
+    var roles = ViewData["UserRoles"] as string ?? "-";
+}
+{{~
+# Кои допълнителни свойства има ApplicationUser (за да не реферираме несъществуващи).
+has_fn = false
+has_pfp = false
+for p in spec.identity.application_user.extra_properties
+  if p.name == "FirstName"; has_fn = true; end
+  if p.name == "ProfilePicturePath"; has_pfp = true; end
+end
+# Админ роля - за защитата при изтриване.
+admin_role = ""
+for r in spec.identity.roles; if r.is_admin; admin_role = r.name; break; end; end
+~}}
+
+<div class="d-flex align-items-center gap-3 mb-3">
+{{~ if has_pfp ~}}
+    <img src="@(string.IsNullOrEmpty(Model.User.ProfilePicturePath) ? "/images/avatar-default.svg" : "/" + Model.User.ProfilePicturePath)"
+         class="rounded-circle" style="width:96px;height:96px;object-fit:cover;" alt="Профилна снимка" />
+{{~ end ~}}
+    <div>
+        <h1 class="mb-0">{{ if has_fn }}@(string.IsNullOrEmpty(Model.User.FirstName) ? Model.User.Email : Model.User.FirstName){{ else }}@Model.User.Email{{ end }}</h1>
+        <span class="badge bg-info">@roles</span>
+    </div>
+</div>
+
+<dl class="row">
+    <dt class="col-sm-3">Идентификатор</dt>
+    <dd class="col-sm-9"><code>@Model.User.Id</code></dd>
+    <dt class="col-sm-3">Имейл</dt>
+    <dd class="col-sm-9">@Model.User.Email</dd>
+{{~ if has_fn ~}}
+    <dt class="col-sm-3">Име</dt>
+    <dd class="col-sm-9">@Model.User.FirstName</dd>
+{{~ end ~}}
+    <dt class="col-sm-3">Роля</dt>
+    <dd class="col-sm-9">@roles</dd>
+</dl>
+
+<div class="mb-4 d-flex gap-2">
+    <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-id="@Model.User.Id">Редакция</a>
+    <a class="btn btn-outline-secondary" asp-action="Index">Назад към списъка</a>
+    @if (!@roles.Contains("{{ subst admin_role }}"))
+    {
+        <form class="d-inline" asp-action="Delete" asp-route-id="@Model.User.Id" method="post"
+              onsubmit="return confirm('Изтриване на потребителя?');">
+            <button type="submit" class="btn btn-outline-danger">Изтриване</button>
+        </form>
+    }
+</div>
+
+<hr />
+
+<partial name="_UserProfileContent" model="Model" />

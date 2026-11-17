@@ -1,0 +1,18 @@
+@model {{ meta.root_namespace }}.Models.Catalogue
+@{
+    ViewData["Title"] = "Преименуване на каталог";
+}
+
+<h2>Преименуване на каталог</h2>
+
+<form asp-action="EditName" method="post" class="col-md-4 mt-4">
+    <input type="hidden" name="id" value="@Model.Id" />
+    <div class="mb-3">
+        <label class="form-label">Ново название</label>
+        <input class="form-control" name="name" value="@Model.Name" maxlength="60" required autofocus />
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Запази</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Отмени</a>
+    </div>
+</form>

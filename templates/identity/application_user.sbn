@@ -1,0 +1,15 @@
+using Microsoft.AspNetCore.Identity;
+
+{{ ns_open (meta.root_namespace + ".Models") }}
+
+public class ApplicationUser : IdentityUser
+{
+{{~ for prop in spec.identity.application_user.extra_properties ~}}
+{{~ if prop.type == "string" && !prop.nullable ~}}
+    public string {{ prop.name }} { get; set; } = string.Empty;
+{{~ else ~}}
+    public {{ clr_type prop }} {{ prop.name }} { get; set; }
+{{~ end ~}}
+{{~ end ~}}
+}
+{{ ns_close }}

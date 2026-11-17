@@ -1,0 +1,32 @@
+@model IEnumerable<{{ meta.root_namespace }}.Models.Catalogue>
+@{
+    var itemId = (int)ViewData["ItemId"]!;
+}
+
+<div class="list-group mb-3">
+    @if (!Model.Any())
+    {
+        <div class="list-group-item text-muted">Нямате каталози - създайте първия си по-долу.</div>
+    }
+    @foreach (var cat in Model)
+    {
+        var contains = cat.Items.Any(i => i.{{ primary }}Id == itemId);
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <span>@cat.Name</span>
+            <button type="button"
+                    class="btn btn-sm @(contains ? "btn-danger" : "btn-success") catalogue-toggle"
+                    data-catalogue-id="@cat.Id" data-item-id="@itemId">
+                @(contains ? "-" : "+")
+            </button>
+        </div>
+    }
+</div>
+
+<form class="row g-2 catalogue-create-form" data-item-id="@itemId">
+    <div class="col">
+        <input class="form-control form-control-sm" name="name" placeholder="Нов каталог..." maxlength="60" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Създай и добави</button>
+    </div>
+</form>

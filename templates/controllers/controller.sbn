@@ -1,0 +1,143 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Data;
+using {{ meta.root_namespace }}.Models;
+{{~ if controller.dto ~}}
+using {{ meta.root_namespace }}.Models.Dto;
+{{~ end ~}}
+
+{{~ if controller.area ~}}
+{{ ns_open (meta.root_namespace + ".Areas." + controller.area + ".Controllers") }}
+
+[Area("{{ controller.area }}")]
+{{~ else ~}}
+{{ ns_open (meta.root_namespace + ".Controllers") }}
+
+{{~ end ~}}
+public class {{ controller.name }} : Controller
+{
+    private readonly {{ meta.project_name }}Context _context;
+
+    public {{ controller.name }}({{ meta.project_name }}Context context)
+    {
+        _context = context;
+    }
+
+{{~ for action in controller.actions ~}}
+{{~ if action == "Index" && controller.dto ~}}
+{{~ # DTO-проекция: join между съставните модели, изчислено в контролера ~}}
+{{~ dto = null; for d in spec.dtos; if d.name == controller.dto; dto = d; end; end ~}}
+{{~ base_model = dto.composed_of[0] ~}}
+    // GET: обобщен изглед - проекция върху {{ dto.name }}
+    public async Task<IActionResult> Index()
+    {
+        var items = await _context.{{ base_model }}s
+            .AsNoTracking()
+{{~ base = null; for m in spec.models; if m.name == base_model; base = m; end; end ~}}
+{{~ for rel in base.relations ~}}
+            .Include(x => x.{{ rel.navigation }})
+{{~ end ~}}
+            .Select(x => new {{ dto.name }}
+            {
+{{~ for p in dto.properties ~}}
+{{~ # source формат: "Model.Property" - навигация през втория сегмент, ако не е базовият модел ~}}
+{{~ src_model = p.source | string.split "." | array.first ~}}
+{{~ src_prop = p.source | string.split "." | array.last ~}}
+{{~ if src_model == base_model ~}}
+                {{ p.name }} = x.{{ src_prop }}.ToString()!,
+{{~ else ~}}
+                {{ p.name }} = x.{{ src_model }}!.{{ src_prop }}.ToString()!,
+{{~ end ~}}
+{{~ end ~}}
+            })
+            .ToListAsync();
+        return View(items);
+    }
+{{~ else if action == "Index" ~}}
+{{~ if controller.model ~}}
+{{~ m = null; for x in spec.models; if x.name == controller.model; m = x; end; end ~}}
+{{~ page_size = 20 ~}}
+{{~ if controller.pagination; page_size = controller.pagination.page_size; end ~}}
+    public async Task<IActionResult> Index(string? search, string? sortBy, string? sortDir, int page = 1)
+    {
+        const int pageSize = {{ page_size }};
+        var query = _context.{{ controller.model }}s
+            .AsNoTracking()
+{{~ if m && m.images ~}}
+            .Include(x => x.Images)
+{{~ end ~}}
+{{~ if m ~}}
+{{~ for rel in m.relations ~}}
+            .Include(x => x.{{ rel.navigation }})
+{{~ end ~}}
+{{~ end ~}}
+            .AsQueryable();
+
+{{~ if m ~}}
+{{~ search_fields = [] ~}}
+{{~ for pp in m.properties; if pp.type == "string" && !pp.key; search_fields = search_fields | array.add pp.name; end; end ~}}
+{{~ if search_fields.size > 0 ~}}
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(x => {{ for sf in search_fields }}x.{{ sf }}.Contains(term){{ if !for.last }} || {{ end }}{{ end }});
+        }
+{{~ end ~}}
+{{~ end ~}}
+
+{{~ if controller.sorting && controller.sorting.enabled ~}}
+        var descending = sortDir == "desc";
+        query = sortBy switch
+        {
+{{~ for field in controller.sorting.fields ~}}
+            "{{ field }}" => descending ? query.OrderByDescending(x => x.{{ field }}) : query.OrderBy(x => x.{{ field }}),
+{{~ end ~}}
+            _ => query.OrderByDescending(x => x.CreatedAt),
+        };
+        ViewData["SortBy"] = sortBy;
+        ViewData["SortDir"] = descending ? "desc" : "asc"; // текущата посока (не следващата)
+{{~ else ~}}
+        query = query.OrderByDescending(x => x.Id);
+{{~ end ~}}
+
+        // Странициране: никога не зареждаме цялата таблица наведнъж.
+        var total = await query.CountAsync();
+        ViewData["Page"] = page;
+        ViewData["TotalPages"] = (int)Math.Ceiling(total / (double)pageSize);
+        ViewData["Search"] = search;
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        return View(items);
+    }
+{{~ else ~}}
+    public IActionResult Index()
+    {
+        return View();
+    }
+{{~ end ~}}
+{{~ else if action == "Contact" ~}}
+    // Статична контактна форма - без изпращане (по спецификация)
+    public IActionResult Contact()
+    {
+        return View();
+    }
+{{~ else if action == "Privacy" ~}}
+    public IActionResult Privacy()
+    {
+        return View();
+    }
+{{~ else if action == "Error" ~}}
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+        return View();
+    }
+{{~ else ~}}
+    public IActionResult {{ action }}()
+    {
+        return View();
+    }
+{{~ end ~}}
+
+{{~ end ~}}
+}
+{{ ns_close }}

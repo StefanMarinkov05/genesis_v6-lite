@@ -1,0 +1,545 @@
+{
+  "specVersion": "1.1",
+  "meta": {
+    "projectName": "FaceNote",
+    "solutionName": "FaceNoteSolution",
+    "rootNamespace": "FaceNote",
+    "domainHint": "social marketplace: user posts, product listings, personal catalogues, Bulgarian market",
+    "domainHintBg": "социална пазарна платформа: потребителски публикации, продуктови обяви, лични каталози, българският пазар",
+    "language": "en",
+    "targetFramework": "net10.0",
+    "sdkPin": "10.0.100",
+    "database": {
+      "provider": "SqlServer",
+      "migrateOnStartup": true
+    },
+    "style": {
+      "mode": "auto",
+      "bootstrapTheme": "flatly",
+      "pickedBy": "genesis",
+      "preset": "midnight"
+    },
+    "routing": {
+      "defaultArea": "Client"
+    }
+  },
+  "conventions": {
+    "timestamps": {
+      "createdAt": true,
+      "updatedAt": true,
+      "deletedAt": false
+    },
+    "deleteBehavior": "soft",
+    "validationMessagesLanguage": "bg"
+  },
+  "variationProfile": {
+    "seed": "facenote-2026",
+    "axes": {
+      "namespaceStyle": "blockScoped"
+    }
+  },
+  "models": [
+    {
+      "name": "Brand",
+      "file": "Models/Brand.cs",
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "Name",
+          "type": "string",
+          "displayName": "Марка",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Полето Марка е задължително."
+            },
+            {
+              "attribute": "StringLength",
+              "args": [
+                60
+              ],
+              "errorMessage": "Марката не може да е по-дълга от 60 символа."
+            }
+          ],
+          "seedHint": "реални марки, разпознаваеми в България"
+        }
+      ],
+      "displayName": "Марки",
+      "isSpecification": true
+    },
+    {
+      "name": "Category",
+      "file": "Models/Category.cs",
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "Name",
+          "type": "string",
+          "displayName": "Категория",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Полето Категория е задължително."
+            }
+          ],
+          "seedHint": "типични категории продукти на български"
+        }
+      ],
+      "displayName": "Категории",
+      "isSpecification": true
+    },
+    {
+      "name": "Product",
+      "file": "Models/Product.cs",
+      "softDelete": true,
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "Title",
+          "type": "string",
+          "displayName": "Заглавие",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Полето Заглавие е задължително."
+            },
+            {
+              "attribute": "StringLength",
+              "args": [
+                100
+              ],
+              "kwargs": {
+                "MinimumLength": 3
+              },
+              "errorMessage": "Заглавието трябва да е между 3 и 100 символа."
+            }
+          ],
+          "seedHint": "реалистични заглавия на обяви на български"
+        },
+        {
+          "name": "Description",
+          "type": "string",
+          "displayName": "Описание",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Полето Описание е задължително."
+            }
+          ],
+          "seedHint": "2-3 изречения описание на продукта на български"
+        },
+        {
+          "name": "Price",
+          "type": "decimal",
+          "displayName": "Цена",
+          "validations": [
+            {
+              "attribute": "Range",
+              "args": [
+                0.01,
+                1000000
+              ],
+              "errorMessage": "Цената трябва да е положителна."
+            }
+          ],
+          "seedHint": "реалистични цени в лева: 5 - 5000"
+        },
+        {
+          "name": "Quantity",
+          "type": "int",
+          "displayName": "Наличност",
+          "validations": [
+            {
+              "attribute": "Range",
+              "args": [
+                0,
+                1000000
+              ],
+              "errorMessage": "Наличността трябва да е неотрицателно число."
+            }
+          ],
+          "seedHint": "реалистично количество на склад: 0 - 200 (0 означава изчерпан продукт)"
+        },
+        {
+          "name": "Status",
+          "type": "enum",
+          "displayName": "Статус",
+          "enumValues": [
+            {
+              "value": "Nalichen",
+              "displayName": "Наличен"
+            },
+            {
+              "value": "Zapazen",
+              "displayName": "Запазен"
+            },
+            {
+              "value": "Prodaden",
+              "displayName": "Продаден"
+            }
+          ]
+        },
+        {
+          "name": "UserId",
+          "type": "string",
+          "displayName": "Продавач",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Полето Продавач е задължително."
+            }
+          ]
+        },
+        {
+          "name": "BrandId",
+          "type": "int",
+          "foreignKey": true,
+          "displayName": "Марка"
+        },
+        {
+          "name": "CategoryId",
+          "type": "int",
+          "foreignKey": true,
+          "displayName": "Категория"
+        }
+      ],
+      "relations": [
+        {
+          "kind": "manyToOne",
+          "target": "Brand",
+          "navigation": "Brand",
+          "inverseNavigation": "Products",
+          "onDelete": "Restrict"
+        },
+        {
+          "kind": "manyToOne",
+          "target": "Category",
+          "navigation": "Category",
+          "inverseNavigation": "Products",
+          "onDelete": "Restrict"
+        }
+      ],
+      "images": {
+        "mode": "multiple",
+        "editSelectable": true,
+        "storedIn": "wwwroot/images/products"
+      },
+      "displayName": "Продукти"
+    }
+  ],
+  "dtos": [],
+  "customValidationAttributes": {
+    "file": "Infrastructure/Validation/DateValidationAttributes.cs",
+    "emit": [
+      "DateNotInFuture",
+      "DateAfter"
+    ]
+  },
+  "identity": {
+    "modules": [
+      "Account.Register",
+      "Account.Login",
+      "Account.Logout",
+      "Account.Manage._Layout",
+      "Account.Manage._ManageNav",
+      "Account.Manage._StatusMessage",
+      "Account.Manage.Index",
+      "Account.Manage.Email",
+      "Account.Manage.ChangePassword"
+    ],
+    "localization": {
+      "strategy": "staticReplacementMap",
+      "mapFile": "identity-bg-map.json"
+    },
+    "applicationUser": {
+      "file": "Models/ApplicationUser.cs",
+      "extends": "IdentityUser",
+      "keyType": "guid-default",
+      "extraProperties": [
+        {
+          "name": "FirstName",
+          "type": "string",
+          "nullable": true,
+          "displayName": "Име"
+        },
+        {
+          "name": "ProfilePicturePath",
+          "type": "string",
+          "nullable": true,
+          "displayName": "Профилна снимка"
+        }
+      ],
+      "controller": {
+        "file": "Areas/Admin/Controllers/UsersController.cs",
+        "writtenFromScratch": true,
+        "actions": [
+          "Index",
+          "Edit",
+          "Delete"
+        ],
+        "rules": [
+          "AdminCannotDeleteSelf"
+        ]
+      }
+    },
+    "errorDescriber": {
+      "file": "Infrastructure/Identity/BgIdentityErrorDescriber.cs",
+      "language": "bg"
+    },
+    "roles": [
+      {
+        "name": "$variation:adminRoleName",
+        "isAdmin": true
+      },
+      {
+        "name": "$variation:userRoleName"
+      }
+    ],
+    "seedUsers": {
+      "inContextSeeding": true,
+      "users": [
+        {
+          "email": "admin@facenote.bg",
+          "role": "$variation:adminRoleName"
+        },
+        {
+          "email": "user@facenote.bg",
+          "role": "$variation:userRoleName"
+        },
+        {
+          "email": "georgi@facenote.bg",
+          "role": "$variation:userRoleName"
+        },
+        {
+          "email": "maria@facenote.bg",
+          "role": "$variation:userRoleName"
+        },
+        {
+          "email": "ivan@facenote.bg",
+          "role": "$variation:userRoleName"
+        },
+        {
+          "email": "petar@facenote.bg",
+          "role": "$variation:adminRoleName"
+        }
+      ]
+    }
+  },
+  "areas": [
+    {
+      "name": "Admin",
+      "forRole": "$variation:adminRoleName"
+    },
+    {
+      "name": "Client",
+      "forRole": "$variation:userRoleName"
+    }
+  ],
+  "controllers": [
+    {
+      "name": "HomeController",
+      "file": "Areas/Client/Controllers/HomeController.cs",
+      "area": "Client",
+      "generatedBy": "template",
+      "actions": [
+        "Index",
+        "Contact"
+      ]
+    },
+    {
+      "name": "ProductsController",
+      "file": "Areas/Client/Controllers/ProductsController.cs",
+      "area": "Client",
+      "model": "Product",
+      "generatedBy": "scaffold",
+      "removedActions": [],
+      "sorting": {
+        "enabled": true,
+        "implementedIn": "controller",
+        "fields": [
+          "Title",
+          "Price",
+          "CreatedAt"
+        ]
+      },
+      "pagination": {
+        "pageSize": 12
+      },
+      "displayName": "Продукти"
+    },
+    {
+      "name": "ProductsController",
+      "file": "Areas/Admin/Controllers/ProductsController.cs",
+      "area": "Admin",
+      "model": "Product",
+      "generatedBy": "scaffold",
+      "displayName": "Продукти"
+    },
+    {
+      "name": "BrandsController",
+      "file": "Areas/Admin/Controllers/BrandsController.cs",
+      "area": "Admin",
+      "model": "Brand",
+      "generatedBy": "scaffold",
+      "displayName": "Марки",
+      "isSpecification": true,
+      "removedActions": ["Details"],
+      "redirects": [
+        { "after": "Create", "to": "SpecificationsController.Index" },
+        { "after": "Edit", "to": "SpecificationsController.Index" },
+        { "after": "DeleteConfirmed", "to": "SpecificationsController.Index" }
+      ]
+    },
+    {
+      "name": "CategoriesController",
+      "file": "Areas/Admin/Controllers/CategoriesController.cs",
+      "area": "Admin",
+      "model": "Category",
+      "generatedBy": "scaffold",
+      "displayName": "Категории",
+      "isSpecification": true,
+      "removedActions": ["Details"],
+      "redirects": [
+        { "after": "Create", "to": "SpecificationsController.Index" },
+        { "after": "Edit", "to": "SpecificationsController.Index" },
+        { "after": "DeleteConfirmed", "to": "SpecificationsController.Index" }
+      ]
+    },
+    {
+      "name": "SpecificationsController",
+      "file": "Areas/Admin/Controllers/SpecificationsController.cs",
+      "area": "Admin",
+      "generatedBy": "writtenFromScratch",
+      "displayName": "Спецификации"
+    }
+  ],
+  "views": {
+    "layout": {
+      "file": "Views/Shared/_Layout.cshtml",
+      "header": {
+        "style": "inlineUpTo3ElseDropdown"
+      },
+      "footer": true
+    },
+    "pages": [
+      {
+        "file": "Areas/Client/Views/Home/Index.cshtml",
+        "kind": "landing",
+        "content": [
+          "hero",
+          "motto"
+        ]
+      },
+      {
+        "file": "Areas/Client/Views/Home/Contact.cshtml",
+        "kind": "contactFormStatic"
+      },
+      {
+        "file": "Areas/Client/Views/Products/Index.cshtml",
+        "kind": "cardGrid",
+        "card": [
+          "Title",
+          "Price",
+          "image",
+          "detailsButton",
+          "addToCatalogueButton"
+        ],
+        "unauthenticatedAction": "redirectLogin"
+      },
+      {
+        "file": "Areas/Admin/Views/Products/Index.cshtml",
+        "kind": "adminTable",
+        "rowButtons": [
+          "edit",
+          "details",
+          "delete"
+        ]
+      },
+      {
+        "file": "Areas/Admin/Views/Brands/Index.cshtml",
+        "kind": "adminTable",
+        "rowButtons": [
+          "edit",
+          "delete"
+        ]
+      },
+      {
+        "file": "Areas/Admin/Views/Categories/Index.cshtml",
+        "kind": "adminTable",
+        "rowButtons": [
+          "edit",
+          "delete"
+        ]
+      }
+    ]
+  },
+  "features": {
+    "personalization": {
+      "enabled": true
+    },
+    "catalogues": {
+      "enabled": true,
+      "model": "Product"
+    },
+    "orders": {
+      "enabled": true,
+      "model": "Product"
+    },
+    "posts": {
+      "enabled": true
+    },
+    "rating": {
+      "enabled": true
+    },
+    "follows": {
+      "enabled": true
+    }
+  },
+  "seeding": {
+    "generator": "haiku",
+    "rowsPerModel": {
+      "Brand": 6,
+      "Category": 5,
+      "Product": 15,
+      "Post": 10
+    },
+    "imageSource": "pexels",
+    "fkStrategy": "symbolicRefs",
+    "outputFile": "Data/SeedData.cs"
+  },
+  "outputReport": {
+    "file": "wwwroot/output/project-summary.json",
+    "include": [
+      {
+        "codePointer": "searchEngine"
+      },
+      {
+        "codePointer": "sorting"
+      },
+      {
+        "codePointer": "imageCrudLogic"
+      },
+      {
+        "codePointer": "authorization"
+      },
+      {
+        "codePointer": "dateTimeLogic"
+      },
+      {
+        "codePointer": "applicationUserControllerIndex"
+      }
+    ]
+  }
+}

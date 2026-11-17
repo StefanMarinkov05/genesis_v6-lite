@@ -1,0 +1,47 @@
+using System.ComponentModel.DataAnnotations;
+
+{{ ns_open (meta.root_namespace + ".Infrastructure.Validation") }}
+
+{{~ if cva.emit | array.contains "DateNotInFuture" ~}}
+/// <summary>Валидира, че датата не е в бъдещето.</summary>
+public sealed class DateNotInFutureAttribute : ValidationAttribute
+{
+    protected override ValidationResult? IsValid(object? value, ValidationContext context)
+    {
+        if (value is DateTime dt && dt > DateTime.Now)
+            return new ValidationResult(ErrorMessage ?? "Датата не може да е в бъдещето.");
+        return ValidationResult.Success;
+    }
+}
+{{~ end ~}}
+
+{{~ if cva.emit | array.contains "DateNotInPast" ~}}
+/// <summary>Валидира, че датата не е в миналото.</summary>
+public sealed class DateNotInPastAttribute : ValidationAttribute
+{
+    protected override ValidationResult? IsValid(object? value, ValidationContext context)
+    {
+        if (value is DateTime dt && dt < DateTime.Now.Date)
+            return new ValidationResult(ErrorMessage ?? "Датата не може да е в миналото.");
+        return ValidationResult.Success;
+    }
+}
+{{~ end ~}}
+
+{{~ if cva.emit | array.contains "DateAfter" ~}}
+/// <summary>Валидира, че датата е след стойността на друго свойство.</summary>
+public sealed class DateAfterAttribute(string otherProperty) : ValidationAttribute
+{
+    protected override ValidationResult? IsValid(object? value, ValidationContext context)
+    {
+        var otherProp = context.ObjectType.GetProperty(otherProperty);
+        if (otherProp is null)
+            return new ValidationResult($"Непознато свойство: {otherProperty}");
+        var otherValue = otherProp.GetValue(context.ObjectInstance);
+        if (value is DateTime dt && otherValue is DateTime other && dt <= other)
+            return new ValidationResult(ErrorMessage ?? "Датата трябва да е след началната дата.");
+        return ValidationResult.Success;
+    }
+}
+{{~ end ~}}
+{{ ns_close }}

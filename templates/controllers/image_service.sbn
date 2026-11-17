@@ -1,0 +1,79 @@
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+
+{{ ns_open (meta.root_namespace + ".Services") }}
+
+/// <summary>
+/// Работа с изображения. Всяка моделна таблица има собствена таблица за
+/// изображения ({Модел}Image - стил на референтния проект). Пътищата се пазят
+/// относителни спрямо wwwroot.
+/// </summary>
+public class ImageService
+{
+    private readonly {{ meta.project_name }}Context _context;
+    private readonly IWebHostEnvironment _env;
+
+    public ImageService({{ meta.project_name }}Context context, IWebHostEnvironment env)
+    {
+        _context = context;
+        _env = env;
+    }
+{{~ for model in spec.models ~}}
+{{~ if model.images ~}}
+
+    // ---- {{ model.name }} ----
+
+    public async Task<List<string>> Get{{ model.name }}ImagePathsAsync(int id) =>
+        await _context.{{ model.name }}Images
+            .AsNoTracking()
+            .Where(i => i.{{ model.name }}Id == id)
+            .Select(i => "/" + i.RelativePath)
+            .ToListAsync();
+
+    public async Task Save{{ model.name }}ImageAsync(int id, IFormFile file)
+    {
+{{~ if model.images.mode == "single" ~}}
+        // Режим single: новото изображение замества старото.
+        await DeleteAll{{ model.name }}ImagesAsync(id);
+{{~ end ~}}
+        var dir = Path.Combine(_env.WebRootPath, "{{ model.images.stored_in | string.replace "wwwroot/" "" }}");
+        Directory.CreateDirectory(dir);
+        var fileName = "{{ model.name | string.downcase }}-" + id + "-" + Guid.NewGuid().ToString("N") + Path.GetExtension(file.FileName);
+        await using (var stream = File.Create(Path.Combine(dir, fileName)))
+            await file.CopyToAsync(stream);
+
+        _context.{{ model.name }}Images.Add(new {{ model.name }}Image
+        {
+            {{ model.name }}Id = id,
+            RelativePath = "{{ model.images.stored_in | string.replace "wwwroot/" "" }}/" + fileName
+        });
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task Delete{{ model.name }}ImageAsync(int imageId)
+    {
+        var img = await _context.{{ model.name }}Images.FindAsync(imageId);
+        if (img is null) return;
+        var full = Path.Combine(_env.WebRootPath, img.RelativePath);
+        if (File.Exists(full)) File.Delete(full);
+        _context.{{ model.name }}Images.Remove(img);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAll{{ model.name }}ImagesAsync(int id)
+    {
+        var images = await _context.{{ model.name }}Images
+            .Where(i => i.{{ model.name }}Id == id)
+            .ToListAsync();
+        foreach (var img in images)
+        {
+            var full = Path.Combine(_env.WebRootPath, img.RelativePath);
+            if (File.Exists(full)) File.Delete(full);
+        }
+        _context.{{ model.name }}Images.RemoveRange(images);
+        await _context.SaveChangesAsync();
+    }
+{{~ end ~}}
+{{~ end ~}}
+}
+{{ ns_close }}

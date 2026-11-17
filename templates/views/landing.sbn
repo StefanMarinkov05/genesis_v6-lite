@@ -1,0 +1,40 @@
+@{
+    ViewData["Title"] = "Начало";
+}
+
+<div class="hero p-5 mb-4 text-center">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold">Добре дошли в {{ meta.project_name }}</h1>
+        <p class="fs-4">{{ if meta.is_bulgarian && meta.domain_hint_bg }}{{ meta.domain_hint_bg }}{{ else }}{{ meta.domain_hint }}{{ end }}</p>
+{{~ # A9 fix: derive AREA and CONTROLLER from the cardGrid page path
+    # (.../Areas/{Area}/Views/{Controller}/Index.cshtml) - the old code used parts[1]
+    # which is the Area, producing a dead client/client link. ~}}
+{{~ first_grid = null ~}}
+{{~ for p in spec.views.pages; if p.kind == "cardGrid" && first_grid == null; first_grid = p; end; end ~}}
+{{~ if first_grid ~}}
+{{~ parts = first_grid.file | string.split "/" ~}}
+{{~ grid_area = "" ~}}
+{{~ grid_controller = "" ~}}
+{{~ for i in 0..(parts.size - 1) ~}}
+{{~ if parts[i] == "Areas" && i + 1 < parts.size; grid_area = parts[i + 1]; end ~}}
+{{~ if parts[i] == "Views" && i + 1 < parts.size; grid_controller = parts[i + 1]; end ~}}
+{{~ end ~}}
+        <a class="btn btn-primary btn-lg" asp-area="{{ grid_area }}" asp-controller="{{ grid_controller }}" asp-action="Index">Разгледай обявите</a>
+{{~ end ~}}
+    </div>
+</div>
+
+<div class="row text-center">
+    <div class="col-md-4">
+        <h3>Богат избор</h3>
+        <p>Разнообразие от предложения, подбрани за вас.</p>
+    </div>
+    <div class="col-md-4">
+        <h3>Лесно търсене</h3>
+        <p>Намерете точно това, което търсите, за секунди.</p>
+    </div>
+    <div class="col-md-4">
+        <h3>Сигурност</h3>
+        <p>Проверени обяви и защитени данни.</p>
+    </div>
+</div>

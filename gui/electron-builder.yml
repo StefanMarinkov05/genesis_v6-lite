@@ -1,0 +1,33 @@
+# Windows installer for the GUI + the bundled CLI (ADR-014, docs/how-to/build-the-installer.md).
+# Run via `npm run dist` (stages ../build/genesis first). The edition (full = with design/music,
+# lite = without) is decided by scripts/stage-genesis.mjs; the release workflow only renames the
+# artifact for lite.
+appId: com.dpsnn.gui
+productName: DPS-NN
+copyright: Copyright © 2026 Stefan Marinkov
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**/*
+  - resources/icon.ico # BrowserWindow icon, loaded from inside app.asar (main/index.ts)
+  - package.json
+# The read-only install root: dps-nn.exe + templates/ + schema + samples (+ music in the full
+# edition). Lands in <install>\resources\genesis\, found by paths.ts installRoot().
+extraResources:
+  - from: ../build/genesis
+    to: genesis
+win:
+  target:
+    - target: nsis
+      arch: x64
+  icon: resources/icon.ico
+nsis:
+  oneClick: false
+  perMachine: false # per-user, no admin prompt; the workspace is Documents\DPS-NN either way
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DPS-NN
+  artifactName: DPS-NN-Setup-${version}.${ext}
+  deleteAppDataOnUninstall: false # settings (incl. the API key) survive a reinstall; uninstall never touches the workspace

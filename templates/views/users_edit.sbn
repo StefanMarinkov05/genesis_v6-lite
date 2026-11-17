@@ -1,0 +1,57 @@
+{{~
+# Кои extra_properties присъстват - изгледът е защитен спрямо спецификации без тях.
+has_pfp = false
+has_first_name = false
+for ep in spec.identity.application_user.extra_properties
+  if ep.name == "ProfilePicturePath"; has_pfp = true; end
+  if ep.name == "FirstName"; has_first_name = true; end
+end
+~}}
+@model {{ meta.root_namespace }}.Models.ApplicationUser
+@{
+    ViewData["Title"] = "Редакция на потребител";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+@* enctype="multipart/form-data" е ЗАДЪЛЖИТЕЛНО за качване на файл. *@
+<form asp-action="Edit" method="post" enctype="multipart/form-data" class="col-md-6">
+    <input type="hidden" name="id" value="@Model.Id" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label class="form-label">Имейл</label>
+        <input class="form-control" value="@Model.Email" readonly disabled />
+        <div class="form-text">Имейлът не се променя оттук.</div>
+    </div>
+{{~ if has_first_name ~}}
+    <div class="mb-3">
+        <label class="form-label" for="FirstName">Име</label>
+        <input class="form-control" id="FirstName" name="FirstName" value="@Model.FirstName" />
+    </div>
+{{~ end ~}}
+{{~ if has_pfp ~}}
+    <div class="mb-3">
+        <label class="form-label">Текуща профилна снимка</label>
+        <div>
+            @if (!string.IsNullOrWhiteSpace(Model.ProfilePicturePath))
+            {
+                <img src="@("/" + Model.ProfilePicturePath)" alt="профилна снимка" style="height: 96px; width: 96px; object-fit: cover; border-radius: 50%;" />
+            }
+            else
+            {
+                <img src="/images/avatar-default.svg" alt="профилна снимка" style="height: 96px; width: 96px; object-fit: cover; border-radius: 50%;" />
+                <span class="text-muted">Няма качена снимка.</span>
+            }
+        </div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="profilePicture">Нова профилна снимка</label>
+        <input class="form-control" id="profilePicture" name="profilePicture" type="file" accept="image/*" />
+        <div class="form-text">JPG, PNG, WEBP или GIF. Максимум 5 MB. Оставете празно, за да запазите текущата.</div>
+    </div>
+{{~ end ~}}
+
+    <button type="submit" class="btn btn-primary">Запази</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">Отказ</a>
+</form>

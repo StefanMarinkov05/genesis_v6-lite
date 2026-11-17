@@ -1,0 +1,51 @@
+@model IEnumerable<{{ meta.root_namespace }}.Models.ApplicationUser>
+@{
+    ViewData["Title"] = "Потребители";
+    var roles = (IDictionary<string, string>)ViewData["UserRoles"]!;
+    // Ролевите имена в базата остават латиница (User.IsInRole нужди) - тук само показваме БГ етикет.
+    var roleDisplayNames = new Dictionary<string, string>
+    {
+{{~ for r in spec.identity.roles ~}}
+        ["{{ r.name }}"] = "{{ if r.is_admin }}Администратор{{ else }}Потребител{{ end }}",
+{{~ end ~}}
+    };
+}
+
+<h1>Потребители</h1>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ИД</th>
+            <th>Имейл</th>
+{{~ for prop in spec.identity.application_user.extra_properties ~}}
+            <th>{{ if prop.display_name }}{{ prop.display_name }}{{ else }}{{ prop.name }}{{ end }}</th>
+{{~ end ~}}
+            <th>Роля</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in Model)
+        {
+            <tr>
+                <td><code title="@user.Id">@user.Id[..Math.Min(8, user.Id.Length)]…</code></td>
+                <td>@user.Email</td>
+{{~ for prop in spec.identity.application_user.extra_properties ~}}
+                <td>@user.{{ prop.name }}</td>
+{{~ end ~}}
+                <td>@(roles.TryGetValue(user.Id, out var r) ? (roleDisplayNames.TryGetValue(r, out var rd) ? rd : r) : "-")</td>
+                <td>
+{{~ if features.posts || features.catalogues ~}}
+                    <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@user.Id">Детайли</a>
+{{~ end ~}}
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@user.Id">Редакция</a>
+                    <form class="d-inline" asp-action="Delete" asp-route-id="@user.Id" method="post"
+                          onsubmit="return confirm('Сигурни ли сте, че искате да изтриете този потребител?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Изтриване</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

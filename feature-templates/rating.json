@@ -1,0 +1,73 @@
+{
+  "models": [
+    {
+      "name": "Review",
+      "file": "Models/Review.cs",
+      "softDelete": true,
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "$primaryModelId",
+          "type": "int",
+          "foreignKey": true
+        },
+        {
+          "name": "AuthorUserId",
+          "type": "string",
+          "displayName": "Автор",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Авторът е задължителен."
+            }
+          ]
+        },
+        {
+          "name": "Stars",
+          "type": "int",
+          "displayName": "Оценка",
+          "validations": [
+            {
+              "attribute": "Range",
+              "args": [
+                1,
+                5
+              ],
+              "errorMessage": "Оценката е от 1 до 5 звезди."
+            }
+          ],
+          "seedHint": "цяло число 1-5, предимно 4 и 5"
+        },
+        {
+          "name": "Text",
+          "type": "string",
+          "displayName": "Отзив",
+          "nullable": true,
+          "seedHint": "кратък отзив на български за конкретния продукт"
+        },
+        {
+          "name": "ImagePath",
+          "type": "string",
+          "displayName": "Снимка",
+          "nullable": true
+        }
+      ],
+      "relations": [
+        {
+          "kind": "manyToOne",
+          "target": "$primaryModel",
+          "navigation": "$primaryModel",
+          "inverseNavigation": "Reviews",
+          "onDelete": "Cascade"
+        }
+      ],
+      "displayName": "Отзиви"
+    }
+  ],
+  "dtos": [],
+  "controllers": []
+}

@@ -1,0 +1,184 @@
+{
+  "models": [
+    {
+      "name": "CartItem",
+      "file": "Models/CartItem.cs",
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "UserId",
+          "type": "string",
+          "displayName": "Потребител",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Потребителят е задължителен."
+            }
+          ]
+        },
+        {
+          "name": "$primaryModelId",
+          "type": "int",
+          "foreignKey": true
+        },
+        {
+          "name": "Quantity",
+          "type": "int",
+          "displayName": "Количество",
+          "validations": [
+            {
+              "attribute": "Range",
+              "args": [
+                1,
+                99
+              ],
+              "errorMessage": "Количеството трябва да е между 1 и 99."
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "kind": "manyToOne",
+          "target": "$primaryModel",
+          "navigation": "$primaryModel",
+          "inverseNavigation": "CartItems",
+          "onDelete": "Cascade"
+        }
+      ],
+      "displayName": "Артикули в кошница",
+      "isLookup": true
+    },
+    {
+      "name": "Order",
+      "file": "Models/Order.cs",
+      "softDelete": true,
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "UserId",
+          "type": "string",
+          "displayName": "Потребител",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Потребителят е задължителен."
+            }
+          ]
+        },
+        {
+          "name": "Total",
+          "type": "decimal",
+          "displayName": "Обща сума"
+        },
+        {
+          "name": "ReceiverName",
+          "type": "string",
+          "displayName": "Получател",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Името на получателя е задължително."
+            }
+          ]
+        },
+        {
+          "name": "DeliveryAddress",
+          "type": "string",
+          "displayName": "Адрес за доставка",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Адресът за доставка е задължителен."
+            }
+          ]
+        },
+        {
+          "name": "Status",
+          "type": "enum",
+          "displayName": "Статус",
+          "enumValues": [
+            {
+              "value": "Nova",
+              "displayName": "Нова"
+            },
+            {
+              "value": "Obrabotva_se",
+              "displayName": "Обработва се"
+            },
+            {
+              "value": "Zavurshena",
+              "displayName": "Завършена"
+            },
+            {
+              "value": "Otkazana",
+              "displayName": "Отказана"
+            }
+          ]
+        }
+      ],
+      "relations": [],
+      "displayName": "Поръчки"
+    },
+    {
+      "name": "OrderItem",
+      "file": "Models/OrderItem.cs",
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "OrderId",
+          "type": "int",
+          "foreignKey": true,
+          "displayName": "Поръчка"
+        },
+        {
+          "name": "$primaryModelId",
+          "type": "int",
+          "foreignKey": true
+        },
+        {
+          "name": "Quantity",
+          "type": "int",
+          "displayName": "Количество"
+        },
+        {
+          "name": "UnitPrice",
+          "type": "decimal",
+          "displayName": "Единична цена"
+        }
+      ],
+      "relations": [
+        {
+          "kind": "manyToOne",
+          "target": "Order",
+          "navigation": "Order",
+          "inverseNavigation": "Items",
+          "onDelete": "Cascade"
+        },
+        {
+          "kind": "manyToOne",
+          "target": "$primaryModel",
+          "navigation": "$primaryModel",
+          "inverseNavigation": "OrderItems",
+          "onDelete": "Restrict"
+        }
+      ],
+      "displayName": "Артикули в поръчка",
+      "isLookup": true
+    }
+  ],
+  "dtos": [],
+  "controllers": []
+}

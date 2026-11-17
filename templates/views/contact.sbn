@@ -1,0 +1,24 @@
+@{
+    ViewData["Title"] = "Контакти";
+}
+
+<h1>Свържете се с нас</h1>
+<p class="lead">Формата е демонстративна - съобщенията не се изпращат.</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label class="form-label" for="contactName">Име</label>
+            <input class="form-control" id="contactName" type="text" placeholder="Вашето име" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="contactEmail">Имейл</label>
+            <input class="form-control" id="contactEmail" type="email" placeholder="ime@primer.bg" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="contactMessage">Съобщение</label>
+            <textarea class="form-control" id="contactMessage" rows="5" placeholder="Вашето съобщение..."></textarea>
+        </div>
+        <button class="btn btn-primary" type="button" onclick="alert('Благодарим! Това е демонстрационна форма.')">Изпрати</button>
+    </div>
+</div>

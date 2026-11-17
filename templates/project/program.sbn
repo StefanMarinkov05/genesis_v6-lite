@@ -1,0 +1,109 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }};
+using {{ meta.root_namespace }}.Data;
+{{~ if meta.is_bulgarian ~}}
+using {{ meta.root_namespace }}.Infrastructure.Identity;
+{{~ end ~}}
+using {{ meta.root_namespace }}.Models;
+{{~ has_images = false ~}}
+{{~ for m in spec.models; if m.images; has_images = true; end; end ~}}
+{{~ has_pfp = false ~}}
+{{~ for ep in spec.identity.application_user.extra_properties; if ep.name == "ProfilePicturePath"; has_pfp = true; end; end ~}}
+{{~ # FileUploadService се нуждае от регистрация, ако някой го ползва: профилни снимки, снимки към отзиви или снимки към публикации. ~}}
+{{~ needs_upload = has_pfp || features.rating || features.posts ~}}
+{{~ needs_profile_service_using = features.posts || features.catalogues ~}}
+{{~ if has_images || needs_upload || needs_profile_service_using ~}}
+using {{ meta.root_namespace }}.Services;
+{{~ end ~}}
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Връзката към базата може да се пренапише от средата (самостоятелност на проекта):
+//   ConnectionStrings__DefaultConnection=...
+var connectionString = builder.Configuration.GetConnectionString("{{ meta.project_name }}ContextConnection")
+    ?? throw new InvalidOperationException("Липсва connection string '{{ meta.project_name }}ContextConnection'.");
+
+// NOTE: AddDatabaseDeveloperPageExceptionFilter lives in
+// Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore, which the default MVC
+// template only references under Individual auth. We scaffold --auth None, so
+// it is deliberately omitted here (confirmed via a live SDK 10.0.100 build).
+builder.Services.AddDbContext<{{ meta.project_name }}Context>(options => options.UseSqlServer(connectionString));
+
+builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
+    {
+        options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedPhoneNumber = false;
+        options.Password.RequiredLength = 6;
+    })
+    .AddRoles<IdentityRole>()
+{{~ if meta.is_bulgarian ~}}
+    .AddErrorDescriber<BgIdentityErrorDescriber>()
+{{~ end ~}}
+    .AddEntityFrameworkStores<{{ meta.project_name }}Context>();
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages();
+{{~ if has_images ~}}
+builder.Services.AddScoped<ImageService>();
+{{~ end ~}}
+{{~ if needs_upload ~}}
+builder.Services.AddScoped<FileUploadService>();
+{{~ end ~}}
+{{~ # UserProfileService: споделено обобщение за публичния профил и админ детайла (Задачи 26/7). ~}}
+{{~ needs_profile_service = features.posts || features.catalogues ~}}
+{{~ if needs_profile_service ~}}
+builder.Services.AddScoped<UserProfileService>();
+{{~ end ~}}
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+
+{{~ if meta.routing.default_area ~}}
+// Един маршрут с област по подразбиране (стил на референтния проект).
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{area={{ meta.routing.default_area }}}/{controller=Home}/{action=Index}/{id?}");
+{{~ else ~}}
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+{{~ end ~}}
+app.MapRazorPages();
+
+{{~ if meta.database.migrate_on_startup ~}}
+// MigrateAsync при стартиране (флаг от спецификацията, по подразбиране включен).
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<{{ meta.project_name }}Context>();
+    await db.Database.MigrateAsync();
+    await IdentitySeeder.SeedAsync(scope.ServiceProvider);
+    await SeedData.EnsureSeededAsync(db, scope.ServiceProvider); // resolves $seedUser refs internally
+}
+{{~ end ~}}
+
+// Отпечатва действителния адрес при всяко стартиране - независимо от launchBrowser,
+// работи еднакво и през отдалечен работен плот/терминал без браузър.
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var addresses = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>()
+        .Features.Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>()?.Addresses;
+    foreach (var address in addresses ?? [])
+        Console.WriteLine($"\n>>> {{ meta.project_name }} стартира на: {address}\n");
+});
+
+app.Run();

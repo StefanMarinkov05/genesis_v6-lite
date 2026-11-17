@@ -1,0 +1,202 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+
+{{ ns_open (meta.root_namespace + ".Areas.Client.Controllers") }}
+
+/// <summary>
+/// Лични каталози на потребителя - именувани списъци с {{ primary }} записи.
+/// Всички действия изискват вход; всеки вижда и променя само собствените си каталози.
+/// </summary>
+[Area("Client")]
+[Authorize]
+public class CataloguesController : Controller
+{
+    private readonly {{ meta.project_name }}Context _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public CataloguesController({{ meta.project_name }}Context context, UserManager<ApplicationUser> userManager)
+    {
+        _context = context;
+        _userManager = userManager;
+    }
+
+    public async Task<IActionResult> Index()
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var catalogues = await _context.Catalogues
+            .AsNoTracking()
+            .Where(c => c.UserId == userId)
+            .Include(c => c.Items)
+                .ThenInclude(i => i.{{ primary }})
+            .ToListAsync();
+        return View(catalogues);
+    }
+
+    // Партиал за модалния прозорец "Добави в каталог" от каталожната страница.
+    public async Task<IActionResult> Picker(int itemId)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var catalogues = await _context.Catalogues
+            .AsNoTracking()
+            .Where(c => c.UserId == userId)
+            .Include(c => c.Items)
+            .ToListAsync();
+        ViewData["ItemId"] = itemId;
+        return PartialView("_PickerPartial", catalogues);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(string name, int? itemId)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest("Името на каталога е задължително.");
+        var catalogue = new Catalogue { Name = name.Trim(), UserId = userId };
+        _context.Catalogues.Add(catalogue);
+        await _context.SaveChangesAsync();
+        if (itemId is { } id)
+        {
+            _context.CatalogueItems.Add(new CatalogueItem { CatalogueId = catalogue.Id, {{ primary }}Id = id });
+            await _context.SaveChangesAsync();
+        }
+        return itemId is null ? RedirectToAction(nameof(Index)) : Ok();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Toggle(int catalogueId, int itemId)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var catalogue = await _context.Catalogues.FirstOrDefaultAsync(c => c.Id == catalogueId && c.UserId == userId);
+        if (catalogue is null) return NotFound(); // чужд каталог - никога
+
+        var existing = await _context.CatalogueItems
+            .FirstOrDefaultAsync(i => i.CatalogueId == catalogueId && i.{{ primary }}Id == itemId);
+        if (existing is null)
+            _context.CatalogueItems.Add(new CatalogueItem { CatalogueId = catalogueId, {{ primary }}Id = itemId });
+        else
+            _context.CatalogueItems.Remove(existing);
+        await _context.SaveChangesAsync();
+        return Ok(new { added = existing is null });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var catalogue = await _context.Catalogues.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (catalogue is not null)
+        {
+            _context.Catalogues.Remove(catalogue);
+            await _context.SaveChangesAsync();
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    // Задача 19: преименуване на каталог - само от собственика.
+    public async Task<IActionResult> EditName(int id)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var catalogue = await _context.Catalogues.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (catalogue is null) return NotFound();
+        return View(catalogue);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditName(int id, string name)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var catalogue = await _context.Catalogues.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (catalogue is null) return NotFound();
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            catalogue.Name = name.Trim();
+            await _context.SaveChangesAsync();
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    // A5: превключване публичен/личен - само собственикът.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TogglePublic(int id)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var catalogue = await _context.Catalogues.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (catalogue is null) return NotFound();
+        catalogue.IsPublic = !catalogue.IsPublic;
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    // A5: публичен списък с всички каталози, маркирани като публични (достъпен без вход).
+    [AllowAnonymous]
+    public async Task<IActionResult> Public()
+    {
+        var catalogues = await _context.Catalogues
+            .AsNoTracking()
+            .Where(c => c.IsPublic)
+            .Include(c => c.Items)
+                .ThenInclude(i => i.{{ primary }})
+            .ToListAsync();
+        // Задача 25: собствениците на каталозите - за име + връзка към публичния им профил.
+        // Catalogue няма навигация към ApplicationUser (само string UserId), затова ги зареждаме тук.
+        var ownerIds = catalogues.Select(c => c.UserId).Distinct().ToList();
+        ViewData["Owners"] = await _userManager.Users.AsNoTracking()
+            .Where(u => ownerIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+        return View(catalogues);
+    }
+
+    // A5: публична страница на конкретен каталог - само ако е публичен.
+    [AllowAnonymous]
+    public async Task<IActionResult> PublicDetails(int id)
+    {
+        var catalogue = await _context.Catalogues
+            .AsNoTracking()
+            .Where(c => c.Id == id && c.IsPublic)
+            .Include(c => c.Items)
+                .ThenInclude(i => i.{{ primary }})
+            .FirstOrDefaultAsync();
+        if (catalogue is null) return NotFound();
+        return View(catalogue);
+    }
+
+    // A4: пренареждане на елемент нагоре/надолу в собствен каталог.
+    // Нормализираме позициите (0..n-1) преди размяната, за да е стабилно дори когато
+    // всички Position са 0 (стойност по подразбиране за стари редове).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MoveItem(int itemId, string direction)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var item = await _context.CatalogueItems
+            .Include(i => i.Catalogue)
+            .FirstOrDefaultAsync(i => i.Id == itemId && i.Catalogue!.UserId == userId);
+        if (item is null) return NotFound();
+
+        var siblings = await _context.CatalogueItems
+            .Where(i => i.CatalogueId == item.CatalogueId)
+            .OrderBy(i => i.Position).ThenBy(i => i.Id)
+            .ToListAsync();
+        for (var i = 0; i < siblings.Count; i++) siblings[i].Position = i;
+
+        var idx = siblings.FindIndex(i => i.Id == itemId);
+        var swapWith = direction == "up" ? idx - 1 : idx + 1;
+        if (swapWith >= 0 && swapWith < siblings.Count)
+        {
+            (siblings[idx].Position, siblings[swapWith].Position) =
+                (siblings[swapWith].Position, siblings[idx].Position);
+            await _context.SaveChangesAsync();
+        }
+        return RedirectToAction(nameof(Index));
+    }
+}
+{{ ns_close }}

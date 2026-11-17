@@ -1,0 +1,129 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+using {{ meta.root_namespace }}.Services;
+
+{{ ns_open (meta.root_namespace + ".Areas.Client.Controllers") }}
+
+/// <summary>
+/// Социален поток: публикации с гласуване (+1/-1) и коментари.
+/// Правило за собственост: редакция/изтриване само от автора (проверка на сървъра);
+/// администраторите заобикалят правилото. Изтриването е меко.
+/// </summary>
+[Area("Client")]
+public class PostsController : Controller
+{
+    private readonly {{ meta.project_name }}Context _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly FileUploadService _fileUpload;
+
+    public PostsController({{ meta.project_name }}Context context, UserManager<ApplicationUser> userManager, FileUploadService fileUpload)
+    {
+        _context = context;
+        _userManager = userManager;
+        _fileUpload = fileUpload;
+    }
+
+    public async Task<IActionResult> Index(int page = 1)
+    {
+        const int pageSize = 20;
+        var query = _context.Posts.AsNoTracking()
+            .Include(p => p.Votes)
+            .Include(p => p.Comments)
+            .OrderByDescending(p => p.CreatedAt);
+        ViewData["Page"] = page;
+        ViewData["TotalPages"] = (int)Math.Ceiling(await query.CountAsync() / (double)pageSize);
+        ViewData["CurrentUserId"] = _userManager.GetUserId(User);
+        return View(await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync());
+    }
+
+    public async Task<IActionResult> Details(int? id)
+    {
+        if (id is null) return NotFound();
+        var post = await _context.Posts.AsNoTracking()
+            .Include(p => p.Votes)
+            .Include(p => p.Comments)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        if (post is null) return NotFound();
+        ViewData["CurrentUserId"] = _userManager.GetUserId(User);
+        var author = await _userManager.FindByIdAsync(post.UserId);
+        ViewData["AuthorName"] = author?.FirstName is { Length: > 0 } authorFirstName ? authorFirstName : author?.UserName;
+        return View(post);
+    }
+
+    [Authorize]
+    public IActionResult Create() => View();
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(Post post, IFormFile? image)
+    {
+        post.UserId = _userManager.GetUserId(User)!;
+        ModelState.Remove(nameof(Post.UserId));
+        // Задача 10: по избор прикачена снимка към публикацията - валидира се и се записва от FileUploadService.
+        ModelState.Remove(nameof(Post.ImagePath));
+        if (!ModelState.IsValid) return View(post);
+        post.ImagePath = await _fileUpload.SaveImageAsync(image, "uploads/posts");
+        _context.Posts.Add(post);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Vote(int id, int value)
+    {
+        if (value is not (1 or -1)) return BadRequest();
+        var userId = _userManager.GetUserId(User)!;
+        var existing = await _context.PostVotes.FirstOrDefaultAsync(v => v.PostId == id && v.UserId == userId);
+        if (existing is null)
+            _context.PostVotes.Add(new PostVote { PostId = id, UserId = userId, Value = value });
+        else if (existing.Value == value)
+            _context.PostVotes.Remove(existing); // повторен същия глас = оттегляне
+        else
+            existing.Value = value;
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Comment(int id, string content, IFormFile? image)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return RedirectToAction(nameof(Details), new { id });
+        // По избор прикачена снимка към коментара - същият модел като публикацията (задача 14).
+        var commentImagePath = await _fileUpload.SaveImageAsync(image, "uploads/comments");
+        _context.PostComments.Add(new PostComment
+        {
+            PostId = id,
+            Content = content.Trim(),
+            UserId = _userManager.GetUserId(User)!,
+            ImagePath = commentImagePath
+        });
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id);
+        if (post is null) return NotFound();
+        // Собственост: само авторът или администратор.
+        var userId = _userManager.GetUserId(User);
+        if (post.UserId != userId && !User.IsInRole("{{ subst spec.identity.roles[0].name }}"))
+            return Forbid();
+        post.IsDeleted = true;
+        post.DeletedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+}
+{{ ns_close }}

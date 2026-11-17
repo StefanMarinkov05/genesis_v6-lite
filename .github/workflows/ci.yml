@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore dps-nn.slnx
+
+      - name: Build
+        run: dotnet build dps-nn.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test dps-nn.slnx --no-build --configuration Release --logger "console;verbosity=normal"
+
+  gui-test:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: gui
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: "npm"
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build (electron-vite, all 3 targets)
+        run: npm run build
+
+      - name: Test
+        run: npm run test:runner

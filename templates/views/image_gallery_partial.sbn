@@ -1,0 +1,12 @@
+@* Партиал за галерия - показва наличните изображения на записа с избирателно триене. *@
+@model List<string>
+<div class="row row-cols-2 row-cols-md-4 g-2 mb-3">
+    @foreach (var path in Model)
+    {
+        <div class="col">
+            <div class="card">
+                <img src="/@path" class="card-img-top" alt="изображение" style="height: 120px; object-fit: cover;" />
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,54 @@
+@model {{ meta.root_namespace }}.Models.Order
+@{
+    ViewData["Title"] = "Детайли на поръчка";
+{{~
+# Първото текстово (string) свойство на основния модел - за етикет на артикула,
+# същата логика като в cart_index.sbn (иначе показваме Id).
+display = "Id"
+for tm in spec.models
+  if tm.name == primary
+    for tp in tm.properties; if !tp.key && tp.type == "string" && display == "Id"; display = tp.name; end; end
+  end
+end
+~}}
+}
+
+<h1>Поръчка №@Model.Id</h1>
+
+<dl class="row">
+    <dt class="col-sm-3">Дата</dt>
+    <dd class="col-sm-9">@Model.CreatedAt.ToString("dd.MM.yyyy HH:mm")</dd>
+    <dt class="col-sm-3">Статус</dt>
+    <dd class="col-sm-9">@Html.DisplayFor(m => m.Status)</dd>
+    @if (!string.IsNullOrWhiteSpace(Model.ReceiverName))
+    {
+        <dt class="col-sm-3">Получател</dt>
+        <dd class="col-sm-9">@Model.ReceiverName</dd>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.DeliveryAddress))
+    {
+        <dt class="col-sm-3">Адрес за доставка</dt>
+        <dd class="col-sm-9">@Model.DeliveryAddress</dd>
+    }
+    <dt class="col-sm-3">Обща сума</dt>
+    <dd class="col-sm-9">@Model.Total.ToString("F2") лв.</dd>
+</dl>
+
+<table class="table table-striped">
+    <thead>
+        <tr><th>Артикул</th><th>Количество</th><th>Единична цена</th><th>Сума</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td>@item.{{ primary }}?.{{ display }}</td>
+                <td>@item.Quantity</td>
+                <td>@item.UnitPrice.ToString("F2") лв.</td>
+                <td>@((item.UnitPrice * item.Quantity).ToString("F2")) лв.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-action="Orders" class="btn btn-secondary">Към поръчките</a>

@@ -1,0 +1,63 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+
+{{ ns_open meta.root_namespace }}
+
+public class {{ meta.project_name }}Context : IdentityDbContext<ApplicationUser>
+{
+    public {{ meta.project_name }}Context(DbContextOptions<{{ meta.project_name }}Context> options)
+        : base(options)
+    {
+    }
+
+{{~ for model in spec.models ~}}
+    public DbSet<{{ model.name }}> {{ model.name }}s => Set<{{ model.name }}>();
+{{~ if model.images ~}}
+    public DbSet<{{ model.name }}Image> {{ model.name }}Images => Set<{{ model.name }}Image>();
+{{~ end ~}}
+{{~ end ~}}
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+{{~ for model in spec.models ~}}
+{{~ if model.soft_delete || conventions.delete_behavior == "soft" ~}}
+        // Глобален филтър: меко изтритите записи изчезват от всички заявки автоматично.
+        builder.Entity<{{ model.name }}>().HasQueryFilter(x => !x.IsDeleted);
+{{~ end ~}}
+{{~ end ~}}
+{{~ for model in spec.models ~}}
+{{~ for rel in model.relations ~}}
+{{~ if rel.kind == "manyToOne" ~}}
+        builder.Entity<{{ model.name }}>()
+            .HasOne(x => x.{{ rel.navigation }})
+            .WithMany(x => x.{{ rel.inverse_navigation }})
+            .OnDelete(DeleteBehavior.{{ rel.on_delete }});
+{{~ end ~}}
+{{~ end ~}}
+{{~ for prop in model.properties ~}}
+{{~ if prop.type == "decimal" ~}}
+        builder.Entity<{{ model.name }}>().Property(x => x.{{ prop.name }}).HasPrecision(18, 2);
+{{~ end ~}}
+{{~ end ~}}
+{{~ end ~}}
+    }
+{{~ audit = conventions.timestamps.created_at || conventions.timestamps.updated_at ~}}
+{{~ if audit ~}}
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        // Автоматична поддръжка на одитните печати - никой контролер не ги пипа ръчно.
+        foreach (var entry in ChangeTracker.Entries<AuditableEntity>())
+        {
+{{~ if conventions.timestamps.updated_at ~}}
+            if (entry.State == EntityState.Modified)
+                entry.Entity.UpdatedAt = DateTime.UtcNow;
+{{~ end ~}}
+        }
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+{{~ end ~}}
+}
+{{ ns_close }}

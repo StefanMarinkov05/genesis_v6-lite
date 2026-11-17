@@ -1,0 +1,186 @@
+{
+  "models": [
+    {
+      "name": "Post",
+      "file": "Models/Post.cs",
+      "softDelete": true,
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "Title",
+          "type": "string",
+          "displayName": "Заглавие",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Заглавието е задължително."
+            },
+            {
+              "attribute": "StringLength",
+              "args": [
+                120
+              ],
+              "errorMessage": "Заглавието не може да е по-дълго от 120 символа."
+            }
+          ],
+          "seedHint": "кратки заглавия на публикации на български, свързани с домейна"
+        },
+        {
+          "name": "Content",
+          "type": "string",
+          "displayName": "Съдържание",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Съдържанието е задължително."
+            }
+          ],
+          "seedHint": "2-3 изречения на български, тон на потребителска публикация"
+        },
+        {
+          "name": "ImagePath",
+          "type": "string",
+          "nullable": true,
+          "displayName": "Снимка"
+        },
+        {
+          "name": "UserId",
+          "type": "string",
+          "displayName": "Автор",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Авторът е задължителен."
+            }
+          ]
+        }
+      ],
+      "relations": [],
+      "displayName": "Публикации"
+    },
+    {
+      "name": "PostComment",
+      "file": "Models/PostComment.cs",
+      "softDelete": true,
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "PostId",
+          "type": "int",
+          "foreignKey": true,
+          "displayName": "Публикация"
+        },
+        {
+          "name": "Content",
+          "type": "string",
+          "displayName": "Коментар",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Коментарът не може да е празен."
+            },
+            {
+              "attribute": "StringLength",
+              "args": [
+                500
+              ],
+              "errorMessage": "Коментарът не може да е по-дълъг от 500 символа."
+            }
+          ]
+        },
+        {
+          "name": "UserId",
+          "type": "string",
+          "displayName": "Автор",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Авторът е задължителен."
+            }
+          ]
+        },
+        {
+          "name": "ImagePath",
+          "type": "string",
+          "displayName": "Снимка",
+          "nullable": true
+        }
+      ],
+      "relations": [
+        {
+          "kind": "manyToOne",
+          "target": "Post",
+          "navigation": "Post",
+          "inverseNavigation": "Comments",
+          "onDelete": "Cascade"
+        }
+      ],
+      "displayName": "Коментари",
+      "isLookup": true
+    },
+    {
+      "name": "PostVote",
+      "file": "Models/PostVote.cs",
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "PostId",
+          "type": "int",
+          "foreignKey": true,
+          "displayName": "Публикация"
+        },
+        {
+          "name": "UserId",
+          "type": "string",
+          "displayName": "Потребител",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Потребителят е задължителен."
+            }
+          ]
+        },
+        {
+          "name": "Value",
+          "type": "int",
+          "displayName": "Глас",
+          "validations": [
+            {
+              "attribute": "Range",
+              "args": [
+                -1,
+                1
+              ],
+              "errorMessage": "Гласът е +1 или -1."
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "kind": "manyToOne",
+          "target": "Post",
+          "navigation": "Post",
+          "inverseNavigation": "Votes",
+          "onDelete": "Cascade"
+        }
+      ],
+      "displayName": "Гласове",
+      "isLookup": true
+    }
+  ],
+  "dtos": [],
+  "controllers": []
+}

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+      <NoWarn>$(NoWarn);NU1902;NU1903;NU1904</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" Version="7.*" />
+    <PackageReference Include="Scriban" Version="6.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Tests exercise internal seams (Validate, BuildSeedSchema, ViewFileToRoute, EnglishLeaks) -->
+    <InternalsVisibleTo Include="GenesisV6.Tests" />
+  </ItemGroup>
+</Project>

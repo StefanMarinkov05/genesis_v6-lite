@@ -1,0 +1,53 @@
+{{ ns_open (meta.root_namespace + ".Services") }}
+
+/// <summary>
+/// Общо качване на единични файлове (профилни снимки, прикачени файлове към отзиви).
+/// Отделен от ImageService - той управлява per-model {Модел}Image таблиците; тук просто
+/// записваме ЕДИН файл в wwwroot и връщаме относителния му път (за src в изгледа или за
+/// съхранение в поле като ProfilePicturePath).
+///
+/// Сигурност (защо, не само какво):
+///  - Името на файла се генерира от Guid, НИКОГА от подаденото от клиента име - така
+///    е невъзможен path traversal (../../) и презаписване на чужди файлове.
+///  - Allowlist на разширения + проверка на Content-Type - не приемаме изпълними/скрипт файлове.
+///  - Таван на размера - за да не се качват огромни файлове (DoS на диска).
+///  - Подпапката (subfolder) е зададена от КОДА на извикващия, не от потребителя.
+/// </summary>
+public class FileUploadService
+{
+    private readonly IWebHostEnvironment _env;
+
+    // Разрешени разширения за изображения. HashSet + OrdinalIgnoreCase = бърза, регистро-независима проверка.
+    private static readonly HashSet<string> AllowedImageExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+    private const long MaxBytes = 5 * 1024 * 1024; // 5 MB
+
+    public FileUploadService(IWebHostEnvironment env) => _env = env;
+
+    /// <summary>Валиден ли е файлът като изображение (размер + разширение + Content-Type).</summary>
+    public bool IsValidImage(IFormFile? file) =>
+        file is { Length: > 0 and <= MaxBytes }
+        && AllowedImageExtensions.Contains(Path.GetExtension(file.FileName))
+        && (file.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false);
+
+    /// <summary>
+    /// Записва изображението в wwwroot/{subfolder} и връща относителния път
+    /// (напр. "uploads/avatars/&lt;guid&gt;.jpg"), или null ако файлът липсва/е невалиден.
+    /// </summary>
+    public async Task<string?> SaveImageAsync(IFormFile? file, string subfolder)
+    {
+        if (!IsValidImage(file)) return null;
+
+        var dir = Path.Combine(_env.WebRootPath, subfolder);
+        Directory.CreateDirectory(dir);
+
+        // Guid име + оригиналното разширение (валидирано по-горе) - без нищо от клиента в пътя.
+        var fileName = Guid.NewGuid().ToString("N") + Path.GetExtension(file!.FileName).ToLowerInvariant();
+        await using (var stream = File.Create(Path.Combine(dir, fileName)))
+            await file.CopyToAsync(stream);
+
+        // Връщаме с наклонени черти напред - валиден URL път под wwwroot.
+        return subfolder.Replace('\\', '/').TrimEnd('/') + "/" + fileName;
+    }
+}
+{{ ns_close }}

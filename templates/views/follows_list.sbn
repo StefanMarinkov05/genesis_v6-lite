@@ -1,0 +1,73 @@
+{{~
+# FirstName е незадължително extra_property - показвай го само ако е в спецификацията,
+# иначе падни към Email (същата защита като в profiles_public.sbn).
+has_first_name = false
+for ep in spec.identity.application_user.extra_properties
+  if ep.name == "FirstName"; has_first_name = true; end
+end
+~}}
+@model {{ meta.root_namespace }}.Areas.Client.Controllers.FollowersFollowingViewModel
+@{
+    ViewData["Title"] = "Последователи и следвани";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <h4 class="mb-3">Последователи <span class="badge bg-secondary">@Model.Followers.Count</span></h4>
+        @if (!Model.Followers.Any())
+        {
+            <p class="text-muted">Все още никой не ви следва.</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var user in Model.Followers)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+{{~ if has_first_name ~}}
+                        <span>@(string.IsNullOrWhiteSpace(user.FirstName) ? user.Email : user.FirstName)</span>
+{{~ else ~}}
+                        <span>@user.Email</span>
+{{~ end ~}}
+                        @if (!Model.Following.Any(f => f.Id == user.Id))
+                        {
+                            <form asp-action="Toggle" method="post" class="d-inline">
+                                <input type="hidden" name="targetUserId" value="@user.Id" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Последвай обратно</button>
+                            </form>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    <div class="col-md-6">
+        <h4 class="mb-3">Следвани <span class="badge bg-secondary">@Model.Following.Count</span></h4>
+        @if (!Model.Following.Any())
+        {
+            <p class="text-muted">Все още не следвате никого.</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var user in Model.Following)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+{{~ if has_first_name ~}}
+                        <span>@(string.IsNullOrWhiteSpace(user.FirstName) ? user.Email : user.FirstName)</span>
+{{~ else ~}}
+                        <span>@user.Email</span>
+{{~ end ~}}
+                        <form asp-action="Toggle" method="post" class="d-inline">
+                            <input type="hidden" name="targetUserId" value="@user.Id" />
+                            <button class="btn btn-sm btn-outline-danger" type="submit">Спри да следваш</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>

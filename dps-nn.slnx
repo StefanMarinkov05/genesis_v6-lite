@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Genesis.Cli/GenesisV6.Cli.csproj" />
+    <Project Path="src/Genesis.Core/GenesisV6.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Genesis.Tests/GenesisV6.Tests.csproj" />
+  </Folder>
+</Solution>

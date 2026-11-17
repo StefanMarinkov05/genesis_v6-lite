@@ -1,0 +1,6 @@
+{
+  "_comment": "Feature 'personalization' is realized by built-in template behavior (cardGrid pages / layout user widget). Fragment intentionally injects nothing.",
+  "models": [],
+  "dtos": [],
+  "controllers": []
+}

@@ -1,0 +1,51 @@
+@model IEnumerable<{{ meta.root_namespace }}.Models.Post>
+@{
+    ViewData["Title"] = "Публикации";
+    var currentUserId = (string?)ViewData["CurrentUserId"];
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Публикации</h1>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <a class="btn btn-primary" asp-action="Create">Нова публикация</a>
+    }
+</div>
+
+@foreach (var post in Model)
+{
+    var score = post.Votes.Sum(v => v.Value);
+    <div class="card mb-3">
+        @if (!string.IsNullOrEmpty(post.ImagePath))
+        {
+            <a asp-action="Details" asp-route-id="@post.Id">
+                <img src="/@post.ImagePath" alt="@post.Title" class="card-img-top" style="max-height: 320px; object-fit: cover;" />
+            </a>
+        }
+        <div class="card-body">
+            <h5 class="card-title"><a asp-action="Details" asp-route-id="@post.Id">@post.Title</a></h5>
+            <p class="card-text">@post.Content</p>
+            <div class="d-flex gap-3 align-items-center text-muted small">
+                <span>Резултат: <strong>@score</strong></span>
+                <span>Коментари: @post.Comments.Count</span>
+                <span>@post.CreatedAt.ToString("dd.MM.yyyy")</span>
+            </div>
+        </div>
+    </div>
+}
+
+@{
+    var currentPage = (int)(ViewData["Page"] ?? 1);
+    var totalPages = (int)(ViewData["TotalPages"] ?? 1);
+}
+@if (totalPages > 1)
+{
+    <nav><ul class="pagination">
+        @for (var p = 1; p <= totalPages; p++)
+        {
+            <li class="page-item @(p == currentPage ? "active" : "")">
+                <a class="page-link" asp-action="Index" asp-route-page="@p">@p</a>
+            </li>
+        }
+    </ul></nav>
+}

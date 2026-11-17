@@ -1,0 +1,317 @@
+@model {{ meta.root_namespace }}.Areas.Admin.Controllers.SpecificationsViewModel
+@{
+    ViewData["Title"] = "Спецификации";
+    var activeTab = Context.Request.Query["tab"].FirstOrDefault() ?? "";
+}
+
+{{~
+lookup_models = []
+for m in spec.models; if m.is_lookup; lookup_models = lookup_models | array.add m; end; end
+
+specification_models = []
+for m in spec.models; if m.is_specification; specification_models = specification_models | array.add m; end; end
+
+review_model = null
+for m in spec.models; if m.name == "Review"; review_model = m; end; end
+has_feedback = features.rating && review_model != null
+
+has_first_name = false
+for ep in spec.identity.application_user.extra_properties; if ep.name == "FirstName"; has_first_name = true; end; end
+
+# Flat ordered tab-key list (specification tabs first, then lookup, then feedback last) - used
+# both for the nav strip and to compute the "first tab" default / which pane is initially shown.
+tab_keys = []
+for m in specification_models; tab_keys = tab_keys | array.add (m.name | string.downcase); end
+for m in lookup_models; tab_keys = tab_keys | array.add (m.name | string.downcase); end
+if has_feedback; tab_keys = tab_keys | array.add "feedback"; end
+~}}
+
+<h1>Спецификации</h1>
+<p class="text-muted">Справочни данни, малки съпътстващи записи и обратна връзка - на едно място.</p>
+
+@{
+    var activeTabResolved = string.IsNullOrEmpty(activeTab) ? "{{ if tab_keys.size > 0 }}{{ tab_keys[0] }}{{ end }}" : activeTab;
+}
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+{{~ for m in specification_models ~}}
+{{~ key = m.name | string.downcase ~}}
+{{~ if m.display_name; tab_label = m.display_name; else; tab_label = m.name; end ~}}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link@(activeTabResolved == "{{ key }}" ? " active" : "")" data-bs-toggle="tab" data-bs-target="#tab-{{ key }}" type="button">{{ tab_label }}</button>
+    </li>
+{{~ end ~}}
+{{~ for m in lookup_models ~}}
+{{~ key = m.name | string.downcase ~}}
+{{~ if m.display_name; tab_label = m.display_name; else; tab_label = m.name; end ~}}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link@(activeTabResolved == "{{ key }}" ? " active" : "")" data-bs-toggle="tab" data-bs-target="#tab-{{ key }}" type="button">{{ tab_label }}</button>
+    </li>
+{{~ end ~}}
+{{~ if has_feedback ~}}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link@(activeTabResolved == "feedback" ? " active" : "")" data-bs-toggle="tab" data-bs-target="#tab-feedback" type="button">Отзиви</button>
+    </li>
+{{~ end ~}}
+</ul>
+
+<div class="tab-content">
+{{~ # ---- CRUD tabs: atomic reference models (Brand/Category-style), reuse scaffolded sub-controllers ---- ~}}
+{{~ for m in specification_models ~}}
+{{~
+key = m.name | string.downcase
+target_controller = null
+for tc in spec.controllers
+  if tc.area == "Admin" && tc.model == m.name; target_controller = tc.name | string.replace "Controller" ""; end
+end
+cols = []
+for p in m.properties; if !p.key && !p.foreign_key && !p.computed; cols = cols | array.add p; end; end
+~}}
+    <div class="tab-pane fade@(activeTabResolved == "{{ key }}" ? " show active" : "")" id="tab-{{ key }}" role="tabpanel">
+{{~ if target_controller ~}}
+        <p>
+            <a class="btn btn-primary btn-sm" asp-area="Admin" asp-controller="{{ target_controller }}" asp-action="Create" asp-route-returnUrl="@Url.Action("Index", "Specifications", new { tab = "{{ key }}" })">Създай нов запис</a>
+        </p>
+{{~ end ~}}
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+{{~ for p in cols ~}}
+{{~ if p.display_name; col_label = p.display_name; else; col_label = p.name; end ~}}
+                    <th>{{ col_label }}</th>
+{{~ end ~}}
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.{{ m.name }}s)
+                {
+                    <tr>
+{{~ for p in cols ~}}
+                        <td>@item.{{ p.name }}</td>
+{{~ end ~}}
+                        <td>
+{{~ if target_controller ~}}
+                            <a class="btn btn-sm btn-outline-secondary" asp-area="Admin" asp-controller="{{ target_controller }}" asp-action="Edit" asp-route-id="@item.{{ m.properties[0].name }}" asp-route-returnUrl="@Url.Action("Index", "Specifications", new { tab = "{{ key }}" })">Редакция</a>
+                            <a class="btn btn-sm btn-outline-danger" asp-area="Admin" asp-controller="{{ target_controller }}" asp-action="Delete" asp-route-id="@item.{{ m.properties[0].name }}" asp-route-returnUrl="@Url.Action("Index", "Specifications", new { tab = "{{ key }}" })">Изтриване</a>
+{{~ end ~}}
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!Model.{{ m.name }}s.Any())
+        {
+            <p class="text-muted">Няма записи.</p>
+        }
+    </div>
+{{~ end ~}}
+
+{{~ # ---- Read-only tabs: join/lookup models, with generic auto-derived filters ---- ~}}
+{{~ for m in lookup_models ~}}
+{{~
+key = m.name | string.downcase
+mvar = key
+cols = []
+for p in m.properties; if !p.key && !p.foreign_key && !p.computed; cols = cols | array.add p; end; end
+filter_rels = []
+for rel in m.relations; if rel.kind == "manyToOne"; filter_rels = filter_rels | array.add rel; end; end
+user_prop = null
+for p in m.properties; if p.name == "UserId" || (p.name | string.ends_with "UserId"); user_prop = p; end; end
+~}}
+    <div class="tab-pane fade@(activeTabResolved == "{{ key }}" ? " show active" : "")" id="tab-{{ key }}" role="tabpanel">
+{{~ if filter_rels.size > 0 || user_prop ~}}
+        <form method="get" asp-action="Index" class="row row-cols-lg-auto g-2 align-items-center mb-3">
+            <input type="hidden" name="tab" value="{{ key }}" />
+            @foreach (var kv in Context.Request.Query)
+            {
+{{~ own_param_names = [] ~}}
+{{~ for rel in filter_rels; own_param_names = own_param_names | array.add (mvar + rel.navigation + "Id"); end ~}}
+{{~ if user_prop; own_param_names = own_param_names | array.add (mvar + user_prop.name); end ~}}
+                @if (kv.Key != "tab"{{ for pn in own_param_names }} && kv.Key != "{{ pn }}"{{ end }})
+                {
+                    <input type="hidden" name="@kv.Key" value="@kv.Value" />
+                }
+            }
+{{~ for rel in filter_rels ~}}
+{{~
+param = mvar + rel.navigation + "Id"
+target_display = "Id"
+for tm in spec.models
+  if tm.name == rel.target
+    for tp in tm.properties
+      if !tp.key && !tp.foreign_key && tp.type == "string" && target_display == "Id" && tp.name != "UserId" && !(tp.name | string.ends_with "UserId")
+        target_display = tp.name
+      end
+    end
+  end
+end
+~}}
+            <div class="col">
+                <select class="form-select form-select-sm" name="{{ param }}" onchange="this.form.submit()">
+                    <option value="">{{ rel.navigation }}: всички</option>
+                    @foreach (var opt in Model.{{ rel.target }}Options)
+                    {
+                        <option value="@opt.Id" selected="@(Context.Request.Query["{{ param }}"] == opt.Id.ToString())">@opt.{{ target_display }}</option>
+                    }
+                </select>
+            </div>
+{{~ end ~}}
+{{~ if user_prop ~}}
+            <div class="col">
+                <select class="form-select form-select-sm" name="{{ mvar }}{{ user_prop.name }}" onchange="this.form.submit()">
+                    <option value="">Потребител: всички</option>
+                    @foreach (var u in Model.UserOptions)
+                    {
+                        <option value="@u.Id" selected="@(Context.Request.Query["{{ mvar }}{{ user_prop.name }}"] == u.Id)">{{ if has_first_name }}@(string.IsNullOrEmpty(u.FirstName) ? u.Email : u.FirstName){{ else }}@u.Email{{ end }}</option>
+                    }
+                </select>
+            </div>
+{{~ end ~}}
+            <div class="col">
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-tab="{{ key }}">Изчисти</a>
+            </div>
+        </form>
+{{~ end ~}}
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+{{~ for p in cols ~}}
+{{~ if p.display_name; col_label = p.display_name; else; col_label = p.name; end ~}}
+                    <th>{{ col_label }}</th>
+{{~ end ~}}
+{{~ for rel in m.relations; if rel.kind == "manyToOne" ~}}
+                    <th>{{ rel.navigation }}</th>
+{{~ end; end ~}}
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.{{ m.name }}s)
+                {
+                    <tr>
+{{~ for p in cols ~}}
+                        <td>@item.{{ p.name }}</td>
+{{~ end ~}}
+{{~ for rel in m.relations ~}}
+{{~ if rel.kind == "manyToOne" ~}}
+{{~
+target_display = "Id"
+for tm in spec.models
+  if tm.name == rel.target
+    for tp in tm.properties
+      if !tp.key && !tp.foreign_key && tp.type == "string" && target_display == "Id" && tp.name != "UserId" && !(tp.name | string.ends_with "UserId")
+        target_display = tp.name
+      end
+    end
+  end
+end
+~}}
+                        <td>@item.{{ rel.navigation }}?.{{ target_display }}</td>
+{{~ end; end ~}}
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!Model.{{ m.name }}s.Any())
+        {
+            <p class="text-muted">Няма записи.</p>
+        }
+    </div>
+{{~ end ~}}
+
+{{~ # ---- Feedback tab: Review, read-only, with product/user/rating filters ---- ~}}
+{{~ if has_feedback ~}}
+{{~
+review_rel = null
+for rel in review_model.relations; if rel.kind == "manyToOne"; review_rel = rel; end; end
+review_user_prop = null
+for p in review_model.properties; if p.name == "UserId" || (p.name | string.ends_with "UserId"); review_user_prop = p; end; end
+review_target_display = "Id"
+if review_rel
+  for tm in spec.models
+    if tm.name == review_rel.target
+      for tp in tm.properties
+        if !tp.key && !tp.foreign_key && tp.type == "string" && review_target_display == "Id" && tp.name != "UserId" && !(tp.name | string.ends_with "UserId")
+          review_target_display = tp.name
+        end
+      end
+    end
+  end
+end
+~}}
+    <div class="tab-pane fade@(activeTabResolved == "feedback" ? " show active" : "")" id="tab-feedback" role="tabpanel">
+        <form method="get" asp-action="Index" class="row row-cols-lg-auto g-2 align-items-center mb-3">
+            <input type="hidden" name="tab" value="feedback" />
+            @foreach (var kv in Context.Request.Query)
+            {
+                @if (kv.Key != "tab"
+{{~ if review_rel ~}} && kv.Key != "review{{ review_rel.navigation }}Id"{{ end ~}}
+{{~ if review_user_prop ~}} && kv.Key != "review{{ review_user_prop.name }}"{{ end ~}}
+                    && kv.Key != "reviewStars")
+                {
+                    <input type="hidden" name="@kv.Key" value="@kv.Value" />
+                }
+            }
+{{~ if review_rel ~}}
+            <div class="col">
+                <select class="form-select form-select-sm" name="review{{ review_rel.navigation }}Id" onchange="this.form.submit()">
+                    <option value="">{{ review_rel.navigation }}: всички</option>
+                    @foreach (var opt in Model.{{ review_rel.target }}Options)
+                    {
+                        <option value="@opt.Id" selected="@(Context.Request.Query["review{{ review_rel.navigation }}Id"] == opt.Id.ToString())">@opt.{{ review_target_display }}</option>
+                    }
+                </select>
+            </div>
+{{~ end ~}}
+{{~ if review_user_prop ~}}
+            <div class="col">
+                <select class="form-select form-select-sm" name="review{{ review_user_prop.name }}" onchange="this.form.submit()">
+                    <option value="">Потребител: всички</option>
+                    @foreach (var u in Model.UserOptions)
+                    {
+                        <option value="@u.Id" selected="@(Context.Request.Query["review{{ review_user_prop.name }}"] == u.Id)">{{ if has_first_name }}@(string.IsNullOrEmpty(u.FirstName) ? u.Email : u.FirstName){{ else }}@u.Email{{ end }}</option>
+                    }
+                </select>
+            </div>
+{{~ end ~}}
+            <div class="col">
+                <select class="form-select form-select-sm" name="reviewStars" onchange="this.form.submit()">
+                    <option value="">Оценка: всички</option>
+                    @for (var s = 1; s <= 5; s++)
+                    {
+                        <option value="@s" selected="@(Context.Request.Query["reviewStars"] == s.ToString())">@s ★</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-tab="feedback">Изчисти</a>
+            </div>
+        </form>
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+                    <th>{{ if review_rel }}{{ review_rel.navigation }}{{ end }}</th>
+                    <th>Автор</th>
+                    <th>Оценка</th>
+                    <th>Отзив</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Reviews)
+                {
+                    <tr>
+                        <td>@item.{{ if review_rel }}{{ review_rel.navigation }}{{ end }}?.{{ review_target_display }}</td>
+                        <td>@(Model.ReviewAuthorNames.TryGetValue(item.AuthorUserId, out var n) ? n : "Потребител")</td>
+                        <td>@item.Stars ★</td>
+                        <td>@item.Text</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (!Model.Reviews.Any())
+        {
+            <p class="text-muted">Няма отзиви.</p>
+        }
+    </div>
+{{~ end ~}}
+</div>

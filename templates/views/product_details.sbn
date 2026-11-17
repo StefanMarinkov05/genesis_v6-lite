@@ -1,0 +1,225 @@
+@model {{ meta.root_namespace }}.Models.{{ primary }}
+@{
+{{~
+display = "Id"
+for tm in spec.models
+  if tm.name == primary
+    for tp in tm.properties; if !tp.key && tp.type == "string" && display == "Id"; display = tp.name; end; end
+  end
+end
+~}}
+    ViewData["Title"] = Model.{{ display }};
+    var reviews = (IEnumerable<{{ meta.root_namespace }}.Models.Review>)(ViewData["Reviews"] ?? Enumerable.Empty<{{ meta.root_namespace }}.Models.Review>());
+    var avg = (double?)ViewData["AverageRating"];
+    var authorNames = (IDictionary<string, string>)(ViewData["ReviewAuthors"] ?? new Dictionary<string, string>());
+    var currentUserId = (string?)ViewData["CurrentUserId"];
+    var sellerName = (string?)ViewData["SellerName"];
+}
+
+<div class="row g-4">
+    <div class="col-md-6">
+{{~ # Лява колона: слайдшоу с ВСИЧКИ снимки на продукта ~}}
+        @if (Model.Images.Any())
+        {
+            <div id="productCarousel" class="carousel slide shadow-sm rounded overflow-hidden" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    @foreach (var (img, i) in Model.Images.Select((img, i) => (img, i)))
+                    {
+                        <div class="carousel-item @(i == 0 ? "active" : "")">
+                            <img src="/@img.RelativePath" class="d-block w-100" style="height: 380px; object-fit: cover;" alt="@Model.{{ display }}" />
+                        </div>
+                    }
+                </div>
+                @if (Model.Images.Count > 1)
+                {
+                    <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
+                }
+            </div>
+        }
+        else
+        {
+            <img src="/images/product-default.svg" class="d-block w-100 rounded shadow-sm" style="height: 380px; object-fit: cover;" alt="няма снимка" />
+        }
+    </div>
+    <div class="col-md-6">
+        <h1 class="mb-1">@Model.{{ display }}</h1>
+        @if (!string.IsNullOrEmpty(sellerName))
+        {
+            <p class="text-muted mb-2">
+                Обявено от
+                <a asp-area="Client" asp-controller="Profiles" asp-action="Public" asp-route-id="@ProfileHash.Of(Model.UserId)">@sellerName</a>
+            </p>
+        }
+        <div class="text-warning fs-5 mb-3">
+            @{ var avgDisplay = avg ?? 0; }
+            @for (var i = 1; i <= 5; i++) { <span>@(i <= Math.Round(avgDisplay) ? "★" : "☆")</span> }
+            @if (avg is not null)
+            {
+                <small class="text-muted">(@avgDisplay.ToString("F1") от @reviews.Count() отзива)</small>
+            }
+            else
+            {
+                <small class="text-muted">(няма отзиви)</small>
+            }
+        </div>
+        <dl class="row">
+{{~ for tp in (spec.models | array.filter @(do; ret $0.name == primary; end) | array.first).properties ~}}
+{{~ if !tp.key && !tp.foreign_key && tp.name != "UserId" && tp.name != display ~}}
+            <dt class="col-sm-4">@Html.DisplayNameFor(m => m.{{ tp.name }})</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(m => m.{{ tp.name }})</dd>
+{{~ end ~}}
+{{~ end ~}}
+{{~ mm = null; for x in spec.models; if x.name == primary; mm = x; end; end ~}}
+{{~ for rel in mm.relations ~}}
+{{~ if rel.kind == "manyToOne" && rel.target != "Catalogue" ~}}
+{{~ tdisp = "Id" ~}}
+{{~ for tm2 in spec.models; if tm2.name == rel.target; for tp2 in tm2.properties; if !tp2.key && tp2.type == "string" && tdisp == "Id"; tdisp = tp2.name; end; end; end; end ~}}
+            <dt class="col-sm-4">{{ rel.navigation }}</dt>
+            <dd class="col-sm-8">@Model.{{ rel.navigation }}?.{{ tdisp }}</dd>
+{{~ end ~}}
+{{~ end ~}}
+        </dl>
+{{~ if features.orders ~}}
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <form asp-area="Client" asp-controller="Cart" asp-action="Add" method="post" class="mt-3">
+                <input type="hidden" name="itemId" value="@Model.Id" />
+                <button type="submit" class="btn btn-lg btn-success">Добави в количката</button>
+            </form>
+        }
+        else
+        {
+            <a class="btn btn-lg btn-outline-success mt-3" asp-area="Identity" asp-page="/Account/Login">Влезте, за да поръчате</a>
+        }
+{{~ end ~}}
+{{~ if features.catalogues ~}}
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <button class="btn btn-outline-primary mt-2 catalogue-open-details" type="button"
+                    data-item-id="@Model.Id">Добави в каталог</button>
+        }
+{{~ end ~}}
+        <div class="mt-3">
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Назад към списъка</a>
+        </div>
+    </div>
+</div>
+
+{{~ if features.rating ~}}
+<hr class="my-5" />
+<h3>Отзиви</h3>
+@if (!reviews.Any())
+{
+    <p class="text-muted">Все още няма отзиви за този продукт.</p>
+}
+@foreach (var review in reviews)
+{
+    <div class="card mb-2">
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between">
+                <strong>@(authorNames.TryGetValue(review.AuthorUserId, out var n) ? n : "Потребител")</strong>
+                <span class="text-warning">@for (var i = 1; i <= 5; i++) { <span>@(i <= review.Stars ? "★" : "☆")</span> }</span>
+            </div>
+            @if (review.Text is not null) { <p class="mb-1 mt-1">@review.Text</p> }
+            @if (!string.IsNullOrWhiteSpace(review.ImagePath))
+            {
+                <img src="/@review.ImagePath" alt="снимка към отзив" class="rounded mb-1" style="max-height: 160px; object-fit: cover;" />
+            }
+            <small class="text-muted">@review.CreatedAt.ToString("dd.MM.yyyy")</small>
+        </div>
+    </div>
+}
+@if (User.Identity?.IsAuthenticated == true)
+{
+    @* enctype="multipart/form-data" е задължително заради прикачената снимка (задача 16). *@
+    <form asp-area="Client" asp-controller="Reviews" asp-action="Create" method="post" enctype="multipart/form-data" class="col-md-6 mt-4">
+        <input type="hidden" name="productId" value="@Model.Id" />
+        <div class="mb-2">
+            <label class="form-label">Вашата оценка</label>
+            <select class="form-select" name="stars">
+                @for (var i = 5; i >= 1; i--) { <option value="@i">@i звезди</option> }
+            </select>
+        </div>
+        <div class="mb-2">
+            <textarea class="form-control" name="text" rows="3" placeholder="Вашият отзив (по избор)..."></textarea>
+        </div>
+        <div class="mb-2">
+            <label class="form-label" for="reviewImage">Снимка към отзива (по избор)</label>
+            <input class="form-control" id="reviewImage" name="image" type="file" accept="image/*" />
+        </div>
+        <button class="btn btn-primary" type="submit">Публикувай отзив</button>
+    </form>
+}
+else
+{
+    <p class="text-muted mt-3"><a asp-area="Identity" asp-page="/Account/Login">Влезте</a>, за да оставите отзив.</p>
+}
+{{~ end ~}}
+
+{{~ if features.catalogues ~}}
+{{~ # Модал "Добави в каталог" - същата логика като в card_grid.sbn, но за страницата с детайли. ~}}
+<div class="modal fade" id="catalogueModalDetails" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добави в каталог</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="catalogueModalDetailsBody">Зареждане...</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        var modalEl = document.getElementById('catalogueModalDetails');
+        var modal = new bootstrap.Modal(modalEl);
+        var body = document.getElementById('catalogueModalDetailsBody');
+        var token = function () {
+            var el = document.querySelector('input[name="__RequestVerificationToken"]');
+            return el ? el.value : '';
+        };
+        function loadPicker(itemId) {
+            fetch('/Client/Catalogues/Picker?itemId=' + itemId)
+                .then(function (r) { return r.text(); })
+                .then(function (html) { body.innerHTML = html; wire(itemId); });
+        }
+        function wire(itemId) {
+            body.querySelectorAll('.catalogue-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var fd = new URLSearchParams();
+                    fd.append('catalogueId', btn.dataset.catalogueId);
+                    fd.append('itemId', btn.dataset.itemId);
+                    fd.append('__RequestVerificationToken', token());
+                    fetch('/Client/Catalogues/Toggle', { method: 'POST', body: fd })
+                        .then(function () { loadPicker(itemId); });
+                });
+            });
+            var form = body.querySelector('.catalogue-create-form');
+            if (form) form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var fd = new URLSearchParams();
+                fd.append('name', form.querySelector('input[name=name]').value);
+                fd.append('itemId', form.dataset.itemId);
+                fd.append('__RequestVerificationToken', token());
+                fetch('/Client/Catalogues/Create', { method: 'POST', body: fd })
+                    .then(function () { loadPicker(itemId); });
+            });
+        }
+        document.querySelectorAll('.catalogue-open-details').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                modal.show();
+                loadPicker(btn.dataset.itemId);
+            });
+        });
+    })();
+</script>
+<form class="d-none">@Html.AntiForgeryToken()</form>
+}
+{{~ end ~}}

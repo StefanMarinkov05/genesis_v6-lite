@@ -1,0 +1,217 @@
+{
+  "Brand": [
+    {
+      "refKey": "brand-1",
+      "Name": "BMW"
+    },
+    {
+      "refKey": "brand-2",
+      "Name": "Samsung"
+    },
+    {
+      "refKey": "brand-3",
+      "Name": "Adidas"
+    },
+    {
+      "refKey": "brand-4",
+      "Name": "IKEA"
+    },
+    {
+      "refKey": "brand-5",
+      "Name": "Bosch"
+    },
+    {
+      "refKey": "brand-6",
+      "Name": "Lenovo"
+    }
+  ],
+  "Category": [
+    {
+      "refKey": "cat-1",
+      "Name": "Електроника"
+    },
+    {
+      "refKey": "cat-2",
+      "Name": "Мебели"
+    },
+    {
+      "refKey": "cat-3",
+      "Name": "Дрехи"
+    },
+    {
+      "refKey": "cat-4",
+      "Name": "Спортни стоки"
+    },
+    {
+      "refKey": "cat-5",
+      "Name": "Домакински уреди"
+    }
+  ],
+  "Product": [
+    {
+      "parentRef_Brand": "brand-1",
+      "parentRef_Category": "cat-1",
+      "Title": "Гейминг лаптоп 15 инча",
+      "Description": "Мощен и лек, подходящ за игри и работа. Отлично състояние, използван рядко.",
+      "Price": 15.5,
+      "Quantity": 23,
+      "Status": "Nalichen",
+      "UserId": "$seedUser:0",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-2",
+      "parentRef_Category": "cat-2",
+      "Title": "Безжични слушалки с шумопотискане",
+      "Description": "Изключително качество на звука с активно шумопотискане. Като нов.",
+      "Price": 52.8,
+      "Quantity": 12,
+      "Status": "Zapazen",
+      "UserId": "$seedUser:1",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-3",
+      "parentRef_Category": "cat-3",
+      "Title": "Ъглов диван за хол",
+      "Description": "Удобен и стилен, перфектен за малък или голям хол. Лесен за поддръжка.",
+      "Price": 90.1,
+      "Quantity": 28,
+      "Status": "Prodaden",
+      "UserId": "$seedUser:0",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-4",
+      "parentRef_Category": "cat-4",
+      "Title": "Спортни обувки за бягане",
+      "Description": "Мощен и лек, подходящ за игри и работа. Отлично състояние, използван рядко.",
+      "Price": 127.4,
+      "Quantity": 44,
+      "Status": "Nalichen",
+      "UserId": "$seedUser:1",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-5",
+      "parentRef_Category": "cat-5",
+      "Title": "Прахосмукачка робот",
+      "Description": "Изключително качество на звука с активно шумопотискане. Като нов.",
+      "Price": 164.7,
+      "Quantity": 6,
+      "Status": "Zapazen",
+      "UserId": "$seedUser:0",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-6",
+      "parentRef_Category": "cat-1",
+      "Title": "Смарт часовник с GPS",
+      "Description": "Удобен и стилен, перфектен за малък или голям хол. Лесен за поддръжка.",
+      "Price": 202.0,
+      "Quantity": 7,
+      "Status": "Prodaden",
+      "UserId": "$seedUser:1",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-1",
+      "parentRef_Category": "cat-2",
+      "Title": "Ергономичен стол за офис",
+      "Description": "Мощен и лек, подходящ за игри и работа. Отлично състояние, използван рядко.",
+      "Price": 239.3,
+      "Quantity": 37,
+      "Status": "Nalichen",
+      "UserId": "$seedUser:0",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-2",
+      "parentRef_Category": "cat-3",
+      "Title": "Кафемашина с автоматично разпенване",
+      "Description": "Изключително качество на звука с активно шумопотискане. Като нов.",
+      "Price": 276.6,
+      "Quantity": 9,
+      "Status": "Zapazen",
+      "UserId": "$seedUser:1",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-3",
+      "parentRef_Category": "cat-4",
+      "Title": "Раница за туризъм 40л",
+      "Description": "Удобен и стилен, перфектен за малък или голям хол. Лесен за поддръжка.",
+      "Price": 313.9,
+      "Quantity": 26,
+      "Status": "Prodaden",
+      "UserId": "$seedUser:0",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-4",
+      "parentRef_Category": "cat-5",
+      "Title": "4K телевизор 55 инча",
+      "Description": "Мощен и лек, подходящ за игри и работа. Отлично състояние, използван рядко.",
+      "Price": 351.2,
+      "Quantity": 40,
+      "Status": "Nalichen",
+      "UserId": "$seedUser:1",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-5",
+      "parentRef_Category": "cat-1",
+      "Title": "Матрак с памет форма",
+      "Description": "Изключително качество на звука с активно шумопотискане. Като нов.",
+      "Price": 388.5,
+      "Quantity": 6,
+      "Status": "Zapazen",
+      "UserId": "$seedUser:0",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-6",
+      "parentRef_Category": "cat-2",
+      "Title": "Комплект тежести за фитнес",
+      "Description": "Удобен и стилен, перфектен за малък или голям хол. Лесен за поддръжка.",
+      "Price": 425.8,
+      "Quantity": 35,
+      "Status": "Prodaden",
+      "UserId": "$seedUser:1",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-1",
+      "parentRef_Category": "cat-3",
+      "Title": "Микровълнова фурна с грил",
+      "Description": "Мощен и лек, подходящ за игри и работа. Отлично състояние, използван рядко.",
+      "Price": 463.1,
+      "Quantity": 16,
+      "Status": "Nalichen",
+      "UserId": "$seedUser:0",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-2",
+      "parentRef_Category": "cat-4",
+      "Title": "Портативна колонка водоустойчива",
+      "Description": "Изключително качество на звука с активно шумопотискане. Като нов.",
+      "Price": 500.4,
+      "Quantity": 5,
+      "Status": "Zapazen",
+      "UserId": "$seedUser:1",
+      "imageKeywords": ["product", "product closeup"]
+    },
+    {
+      "parentRef_Brand": "brand-3",
+      "parentRef_Category": "cat-5",
+      "Title": "Настолна лампа LED",
+      "Description": "Удобен и стилен, перфектен за малък или голям хол. Лесен за поддръжка.",
+      "Price": 537.7,
+      "Quantity": 8,
+      "Status": "Prodaden",
+      "UserId": "$seedUser:0",
+      "imageKeywords": ["product", "product closeup"]
+    }
+  ]
+}

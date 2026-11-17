@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(python \"C:\\\\Users\\\\AXN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-AXN-Downloads-genesis-v5-26\\\\497e6339-8002-476b-9782-efa751f5b574\\\\scratchpad\\\\validate_seed.py\")",
+      "Bash(dotnet ef *)",
+      "Bash(dotnet aspnet-codegenerator *)",
+      "Bash(sqllocaldb info *)",
+      "Bash(cp prompts/out/schemas/facenote-schema.json fixtures/project-spec.facenote.json)",
+      "Bash(cp prompts/out/seeds/facenote-seed.json prompts/in/seed-response.json)"
+    ]
+  },
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log-usage.py\"",
+            "shell": "bash",
+            "timeout": 30,
+            "statusMessage": "Logging session usage stats..."
+          }
+        ]
+      }
+    ]
+  }
+}

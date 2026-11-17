@@ -1,0 +1,43 @@
+{{~
+# Определяме "модела-обява" (притежаван от потребител): този с images И свойство UserId.
+# За FaceNote това е Product ("Продавач"). Ако няма такъв - секцията за обяви просто не се
+# генерира. Така компонентът е споделяем между публичния профил (Задача 26) и админ детайла (Задача 7).
+listing = ""
+for m in spec.models
+  has_uid = false
+  for p in m.properties; if p.name == "UserId"; has_uid = true; end; end
+  if has_uid && m.images; listing = m.name; end
+end
+~}}
+{{ ns_open (meta.root_namespace + ".Models") }}
+
+/// <summary>
+/// Обобщено съдържание за един потребител - споделя се от публичния профил
+/// (Client/Profiles/Public) и от админ детайла (Admin/Users/Details). Всяка колекция е
+/// налична само когато съответната функционалност е включена в спецификацията.
+/// </summary>
+public class UserProfileViewModel
+{
+    public ApplicationUser User { get; set; } = default!;
+{{~ if listing != "" ~}}
+    public List<{{ listing }}> Products { get; set; } = new();
+{{~ end ~}}
+{{~ if features.posts ~}}
+    public List<Post> Posts { get; set; } = new();
+{{~ end ~}}
+{{~ if features.rating ~}}
+    public List<Review> Feedbacks { get; set; } = new();
+{{~ end ~}}
+{{~ if features.catalogues ~}}
+    public List<Catalogue> Catalogues { get; set; } = new();
+{{~ end ~}}
+{{~ if features.follows ~}}
+    public List<ApplicationUser> Followers { get; set; } = new();
+    public List<ApplicationUser> Following { get; set; } = new();
+    // Гледната точка на текущия посетител на публичния профил - дали е самият собственик
+    // (крие бутона Follow), и дали вече следва показания потребител (Follow срещу Unfollow).
+    public bool IsOwnProfile { get; set; }
+    public bool IsFollowedByViewer { get; set; }
+{{~ end ~}}
+}
+{{ ns_close }}

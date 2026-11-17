@@ -1,0 +1,1164 @@
+<!-- last-verified: design/design-specs.md §1-§6 (2026-07-12) -->
+<title>Arcane HUD — 5-theme preview — ДПС-НН / Genesis</title>
+<meta name="description" content="Live token preview of the 5 GUI themes (Nova, Imperator, Veil, Forge, Enchant) defined in design/design-specs.md. Edit the CSS custom properties in the THEME TOKENS block to tune." />
+
+<!--
+  This file is the working reference for design/design-specs.md — every value below is a semantic
+  token from that doc (surface.*, text.*, accent.*, state.*, frame.*, glow.*, font.*), not a one-off
+  color. Edit a theme by editing its [data-theme="..."] block only; component CSS never touches a
+  primitive color directly. Real background art (images/bg/*.jpg) will replace the CSS-gradient
+  canvases below without needing any other change — that swap point is marked in .canvas-layer.
+
+  Deliberately single-theme (dark cosmic HUD) per app design, not adaptive to OS light/dark —
+  see design-specs.md §1: the "canvas → scrim → content → chrome" stack assumes a dark portal.
+-->
+
+<style>
+  /* ============================== RESET ============================== */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #050608;
+    color: #e9edf3;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
+  }
+  button { font: inherit; color: inherit; }
+  a { color: inherit; }
+
+  /* ============================== SHARED SYSTEM TOKENS ==============================
+     Invariant across every theme (design-specs.md §2.1 / §3 R2, R7). A theme may NEVER
+     redefine these — that is what R2 ("run-control semantics are locked") means in code. */
+  :root {
+    --state-start:  #34d17a;
+    --state-start-glow: #7cf0ad;
+    --state-pause:  #f5a623;
+    --state-pause-glow: #ffcf7a;
+    --state-resume: #38bdf8;
+    --state-resume-glow: #8fe0ff;
+    --state-stop:   #ff4d5e;
+    --state-stop-glow: #ff98a2;
+    --state-warning: #f2994a;
+    --state-warning-glow: #ffb87a;
+
+    --radius-panel: 10px;
+    --radius-control: 6px;
+    --radius-pill: 999px;
+
+    --font-body: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-technical: "Cascadia Code", "Consolas", ui-monospace, monospace;
+
+    --dur-transition: 150ms;
+    --dur-pulse: 1.8s;
+    --dur-shimmer: 2s;
+    --dur-ambient: 42s;
+
+    --scale-title: 1.7rem;
+    --scale-heading: 1.05rem;
+    --scale-label: 0.72rem;
+    --scale-body: 0.92rem;
+    --scale-mono: 0.8rem;
+    --scale-caption: 0.68rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root { --dur-ambient: 0s; --dur-pulse: 0s; --dur-shimmer: 0s; }
+  }
+
+  /* ============================== THEME TOKENS ==============================
+     One block per theme = one descriptor (design-specs.md §2.2). Everything a theme
+     is allowed to own lives here: surfaces, text, accent/glow, frame ornament color,
+     display-font treatment, and the `showLogo` structural flag (as a CSS custom prop
+     consumed below, since CSS has no boolean type). */
+
+  /* ---- NOVA (hud, default) — clean blue circuit HUD ---- */
+  [data-theme="nova"] {
+    --canvas-a: #050b16; --canvas-b: #0a1830; --canvas-c: #0e2340;
+    --scrim: rgba(4, 9, 18, 0.62);
+    --panel: rgba(10, 20, 38, 0.86); --panel-raised: rgba(15, 28, 50, 0.92); --inset: rgba(3, 7, 14, 0.92);
+    --border-hairline: rgba(120, 180, 255, 0.16);
+    --text-primary: #eaf3ff; --text-secondary: #a9c3e6; --text-muted: #6d84a8;
+    --accent: #3fd0ff; --accent-2: #6ee6ff; --glow: #3fd0ffaa;
+    --font-display: "Cascadia Code", "Consolas", ui-monospace, monospace;
+    --display-transform: uppercase; --display-tracking: 0.12em; --display-style: normal; --display-weight: 600;
+    --show-logo: 1;
+    --frame-corner: "⌐"; --radius-mul: 0.6;
+  }
+
+  /* ---- IMPERATOR (baroque) — Veselin Marinov gold cosmos, VM-exclusive ---- */
+  [data-theme="imperator"] {
+    --canvas-a: #0e0904; --canvas-b: #241407; --canvas-c: #3a2308;
+    --scrim: rgba(10, 6, 2, 0.68);
+    --panel: rgba(28, 17, 6, 0.88); --panel-raised: rgba(38, 24, 9, 0.93); --inset: rgba(12, 7, 2, 0.94);
+    --border-hairline: rgba(230, 190, 110, 0.22);
+    --text-primary: #fbf1d9; --text-secondary: #dcbd84; --text-muted: #9a7f52;
+    --accent: #e7bb4c; --accent-2: #ffe08a; --glow: #e7bb4caa;
+    --font-display: Georgia, "Times New Roman", serif;
+    --display-transform: none; --display-tracking: 0.03em; --display-style: italic; --display-weight: 700;
+    --show-logo: 0;
+    --frame-corner: "❦"; --radius-mul: 1.4;
+  }
+
+  /* ---- VEIL (arcane) — violet forbidden-knowledge portal ---- */
+  [data-theme="veil"] {
+    --canvas-a: #0a0714; --canvas-b: #170e2c; --canvas-c: #251345;
+    --scrim: rgba(8, 5, 16, 0.66);
+    --panel: rgba(22, 13, 40, 0.87); --panel-raised: rgba(30, 18, 52, 0.92); --inset: rgba(9, 5, 17, 0.93);
+    --border-hairline: rgba(190, 140, 255, 0.2);
+    --text-primary: #ede4ff; --text-secondary: #bda3e8; --text-muted: #78649e;
+    --accent: #a76cf2; --accent-2: #d79bff; --glow: #a76cf2aa;
+    --font-display: "Palatino Linotype", Palatino, Georgia, serif;
+    --display-transform: none; --display-tracking: 0.06em; --display-style: normal; --display-weight: 600;
+    --show-logo: 1;
+    --frame-corner: "𖤍"; --radius-mul: 1.2;
+  }
+
+  /* ---- FORGE (forged) — molten soul-forge, aggressive angular ---- */
+  [data-theme="forge"] {
+    --canvas-a: #0c0402; --canvas-b: #260904; --canvas-c: #3d0f05;
+    --scrim: rgba(10, 3, 1, 0.6);
+    --panel: rgba(30, 9, 4, 0.87); --panel-raised: rgba(41, 13, 6, 0.93); --inset: rgba(12, 4, 2, 0.94);
+    --border-hairline: rgba(255, 120, 70, 0.24);
+    --text-primary: #fff1e8; --text-secondary: #f0ab8c; --text-muted: #a56a52;
+    --accent: #ff6a34; --accent-2: #ffa668; --glow: #ff6a34aa;
+    --font-display: "Arial Narrow", "Segoe UI", sans-serif;
+    --display-transform: uppercase; --display-tracking: 0.02em; --display-style: normal; --display-weight: 800;
+    --show-logo: 1;
+    --frame-corner: "▲"; --radius-mul: 0.3;
+  }
+
+  /* ---- ENCHANT (astral) — cyan-magenta aurora + runic frame ---- */
+  [data-theme="enchant"] {
+    --canvas-a: #050f10; --canvas-b: #0a1c22; --canvas-c: #191038;
+    --scrim: rgba(4, 10, 12, 0.62);
+    --panel: rgba(10, 24, 30, 0.86); --panel-raised: rgba(14, 32, 40, 0.92); --inset: rgba(4, 10, 13, 0.93);
+    --border-hairline: rgba(120, 230, 220, 0.2);
+    --text-primary: #e4fffb; --text-secondary: #93dcd6; --text-muted: #5e8f8b;
+    --accent: #43e6cf; --accent-2: #d94ce0; --glow: #43e6cfaa;
+    --font-display: "Trebuchet MS", "Segoe UI", sans-serif;
+    --display-transform: uppercase; --display-tracking: 0.22em; --display-style: normal; --display-weight: 500;
+    --show-logo: 1;
+    --frame-corner: "ᛝ"; --radius-mul: 1.0;
+  }
+
+  /* ============================== PAGE CHROME (outside the app window) ============================== */
+  .stage {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 28px 16px 48px;
+  }
+  .stage-head { max-width: 900px; width: 100%; }
+  .stage-head h1 {
+    font-size: 1.1rem;
+    margin: 0 0 4px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #dfe6f0;
+  }
+  .stage-head p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #8592a6;
+    max-width: 68ch;
+    line-height: 1.5;
+  }
+
+  .theme-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .theme-picker button {
+    appearance: none;
+    border: 1px solid #2a3140;
+    background: #10141c;
+    color: #aeb8c8;
+    padding: 8px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: border-color var(--dur-transition), color var(--dur-transition), box-shadow var(--dur-transition);
+  }
+  .theme-picker button[aria-pressed="true"] {
+    color: #fff;
+    border-color: var(--pick-accent, #3fd0ff);
+    box-shadow: 0 0 0 1px var(--pick-accent, #3fd0ff), 0 0 14px var(--pick-accent, #3fd0ff);
+  }
+  .theme-picker button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+  /* ============================== THE APP WINDOW ============================== */
+  .window {
+    position: relative;
+    width: min(900px, 100%);
+    aspect-ratio: 16 / 10.4;
+    border-radius: calc(14px * var(--radius-mul, 1));
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow: 0 30px 70px -20px rgba(0,0,0,0.7), 0 0 0 1px var(--border-hairline);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+  }
+
+  /* z.canvas — cosmic background (CSS approximation; swap for images/bg/<theme>.jpg later) */
+  .canvas-layer {
+    position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(120% 90% at 78% 8%, var(--canvas-c), transparent 60%),
+      radial-gradient(90% 70% at 15% 95%, var(--canvas-b), transparent 65%),
+      linear-gradient(160deg, var(--canvas-a), var(--canvas-b) 55%, var(--canvas-a));
+    animation: drift var(--dur-ambient) ease-in-out infinite alternate;
+  }
+  @keyframes drift {
+    from { filter: brightness(1) saturate(1); background-position: 0 0; }
+    to   { filter: brightness(1.08) saturate(1.15); background-position: 2% -1%; }
+  }
+  .canvas-layer canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.55; }
+
+  /* z.scrim */
+  .scrim-layer { position: absolute; inset: 0; z-index: 1; background: var(--scrim); }
+
+  /* z.content sits above scrim */
+  .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; }
+
+  /* z.chrome — carved frame ornament (decorative) drawn as a border overlay above content */
+  .frame-ornament {
+    position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px var(--border-hairline), inset 0 0 40px -10px var(--glow);
+  }
+  .corner {
+    position: absolute; z-index: 3; pointer-events: none;
+    color: var(--accent); opacity: 0.75; font-size: 15px; line-height: 1;
+    text-shadow: 0 0 8px var(--glow);
+  }
+  .corner.tl { top: 8px; left: 8px; }
+  .corner.bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
+  .corner.br { bottom: 8px; right: 92px; transform: scale(-1); }
+
+  /* ---- title bar (real DOM chrome — R6: always same position, never the painted art) ---- */
+  .titlebar {
+    position: relative; z-index: 4;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px 10px 14px;
+    -webkit-app-region: drag;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .logo-mark {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: conic-gradient(from 210deg, var(--accent), var(--accent-2), var(--accent));
+    box-shadow: 0 0 10px var(--glow);
+    flex: none;
+  }
+  /* structure.showLogo: false — Imperator is VM-exclusive, its art self-brands */
+  [data-theme="imperator"] .logo-mark { display: none; }
+  .title-text {
+    font-family: var(--font-display);
+    text-transform: var(--display-transform);
+    letter-spacing: var(--display-tracking);
+    font-style: var(--display-style);
+    font-weight: var(--display-weight);
+    font-size: var(--scale-title);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 0 18px var(--glow);
+  }
+  .win-controls { display: flex; gap: 6px; -webkit-app-region: no-drag; }
+  .win-controls button {
+    appearance: none; border: 1px solid var(--border-hairline);
+    background: var(--panel-raised); color: var(--text-secondary);
+    width: 26px; height: 22px; border-radius: 4px; cursor: pointer;
+    font-size: 11px; display: grid; place-items: center;
+    transition: box-shadow var(--dur-transition), color var(--dur-transition);
+  }
+  .win-controls button:hover { color: var(--text-primary); box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--glow); }
+  .win-controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .win-controls .close:hover { color: #fff; box-shadow: 0 0 0 1px var(--state-stop), 0 0 10px var(--state-stop); }
+
+  /* ---- toolbar: theme + language pickers (decorative stand-ins here; real ones live outside) ---- */
+  .toolbar {
+    position: relative; z-index: 4;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px 8px;
+    font-size: var(--scale-label);
+  }
+  .toolbar .group { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+  .chip {
+    border: 1px solid var(--border-hairline); background: var(--panel);
+    border-radius: var(--radius-pill); padding: 4px 10px;
+    text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px;
+    color: var(--text-secondary);
+  }
+
+  /* ---- language picker (overlay z-layer — design-specs.md §5 "flag/lang picker") ---- */
+  .lang-picker { position: relative; }
+  .lang-btn {
+    appearance: none; display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border-hairline); background: var(--panel);
+    border-radius: var(--radius-pill); padding: 4px 8px 4px 6px;
+    color: var(--text-secondary); font-size: 11px; cursor: pointer;
+    transition: box-shadow var(--dur-transition), color var(--dur-transition);
+  }
+  .lang-btn:hover, .lang-btn[aria-expanded="true"] {
+    color: var(--text-primary); box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--glow);
+  }
+  .lang-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .lang-btn .caret { font-size: 8px; opacity: 0.7; transform: translateY(1px); }
+  .lang-list {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 6; /* z.overlay */
+    min-width: 180px;
+    background: var(--panel-raised); border: 1px solid var(--border-hairline);
+    border-radius: 8px; padding: 4px; margin: 0; list-style: none;
+    box-shadow: 0 12px 30px -8px rgba(0,0,0,0.65), 0 0 0 1px var(--border-hairline);
+    display: none;
+  }
+  .lang-list[data-open="true"] { display: block; }
+  .lang-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 5px; cursor: pointer;
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .lang-item .code { margin-left: auto; font-family: var(--font-technical); font-size: 10px; color: var(--text-muted); }
+  .lang-item:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text-primary); }
+  .lang-item[aria-selected="true"] { color: var(--text-primary); background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  .lang-item[aria-selected="true"]::after { content: "✓"; margin-left: 4px; color: var(--accent); }
+  .flag-em { font-size: 14px; line-height: 1; flex: none; }
+  .flag-rom { width: 16px; height: 11px; flex: none; border-radius: 1px; overflow: hidden; }
+  .flag-sga {
+    width: 14px; height: 14px; flex: none; display: grid; place-items: center;
+    color: var(--accent); font-size: 12px;
+  }
+
+  /* ---- input panels ---- */
+  .panels {
+    position: relative; z-index: 4;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 4px 14px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border-hairline);
+    border-radius: calc(var(--radius-panel, 10px) * var(--radius-mul, 1) * 0.6 + 4px);
+    padding: 10px 12px;
+    box-shadow: 0 0 0 1px transparent, 0 6px 18px -10px rgba(0,0,0,0.6);
+  }
+  .panel h3 {
+    margin: 0 0 8px; font-size: var(--scale-label);
+    text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--text-secondary); font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .panel h3::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px var(--glow);
+  }
+  .well {
+    background: var(--inset);
+    border: 1px dashed var(--border-hairline);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: var(--scale-mono);
+    font-family: var(--font-technical);
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .select-row { display: flex; gap: 6px; }
+  select {
+    flex: 1; min-width: 0;
+    background: var(--inset); color: var(--text-primary);
+    border: 1px solid var(--border-hairline); border-radius: 6px;
+    padding: 5px 6px; font-size: var(--scale-mono);
+  }
+  .claude-btn {
+    border: 1px solid var(--accent-2);
+    background: transparent; color: var(--accent-2);
+    border-radius: 6px; padding: 5px 10px; font-size: var(--scale-mono);
+    cursor: pointer; white-space: nowrap;
+    transition: background var(--dur-transition);
+  }
+  .claude-btn:hover { background: color-mix(in srgb, var(--accent-2) 16%, transparent); }
+
+  /* ---- run controls (R2 — semantics locked, colors NEVER read from theme tokens) ---- */
+  .run-row-wrap { position: relative; z-index: 4; padding: 10px 14px 4px; }
+  .run-caption {
+    font-size: var(--scale-caption); color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+  }
+  .run-caption .lock { color: var(--accent); }
+  .run-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .run-btn {
+    border-radius: var(--radius-control);
+    border: 1px solid var(--btn-c);
+    background: color-mix(in srgb, var(--btn-c) 14%, var(--panel));
+    color: #fff;
+    padding: 9px 6px;
+    font-size: var(--scale-body);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: box-shadow var(--dur-transition), transform var(--dur-transition);
+  }
+  .run-btn:hover { box-shadow: 0 0 16px -2px var(--btn-c); transform: translateY(-1px); }
+  .run-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .run-btn.start  { --btn-c: var(--state-start); }
+  .run-btn.pause  { --btn-c: var(--state-pause); }
+  .run-btn.resume { --btn-c: var(--state-resume); }
+  .run-btn.stop   { --btn-c: var(--state-stop); }
+  .run-btn[disabled] { opacity: 0.35; cursor: not-allowed; box-shadow: none; transform: none; }
+  .run-btn.active { animation: pulse var(--dur-pulse) ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 10px -2px var(--btn-c); }
+    50% { box-shadow: 0 0 22px 2px var(--btn-c); }
+  }
+
+  /* ---- progress ---- */
+  .progress-wrap { position: relative; z-index: 4; padding: 10px 14px; }
+  .progress-label {
+    display: flex; justify-content: space-between; font-size: var(--scale-caption);
+    color: var(--text-secondary); margin-bottom: 5px; font-family: var(--font-technical);
+    font-variant-numeric: tabular-nums;
+  }
+  .progress-track {
+    height: 8px; border-radius: var(--radius-pill);
+    background: var(--inset); overflow: hidden; border: 1px solid var(--border-hairline);
+  }
+  .progress-fill {
+    height: 100%; width: 62%; border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 10px var(--glow);
+    background-size: 200% 100%;
+    animation: shimmer var(--dur-shimmer) linear infinite;
+  }
+  @keyframes shimmer { from { background-position: 0% 0; } to { background-position: -200% 0; } }
+
+  /* ---- debug terminal ---- */
+  .terminal-wrap { position: relative; z-index: 4; padding: 8px 14px 14px; flex: 1; display: flex; }
+  .terminal {
+    flex: 1; background: var(--inset);
+    border: 1px solid var(--border-hairline); border-radius: 6px;
+    padding: 8px 10px; font-family: var(--font-technical); font-size: var(--scale-mono);
+    color: var(--text-secondary); overflow: hidden; line-height: 1.5;
+  }
+  .terminal .ok { color: var(--state-start); }
+  .terminal .accent { color: var(--accent); }
+  .terminal .cursor { color: var(--text-primary); }
+
+  /* ---- duplicate-detection dialog (overlay z-layer) ---- */
+  .dialog-backdrop {
+    position: absolute; inset: 0; z-index: 7;
+    background: rgba(2, 3, 6, 0.66);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .dialog-backdrop[data-open="true"] { display: flex; }
+  .dialog {
+    width: min(360px, 100%);
+    background: var(--panel-raised);
+    border: 1px solid var(--border-hairline);
+    border-radius: calc(10px * var(--radius-mul, 1) * 0.7 + 3px);
+    padding: 16px 16px 14px;
+    box-shadow: 0 20px 50px -12px rgba(0,0,0,0.7), 0 0 0 1px var(--border-hairline), 0 0 30px -14px var(--glow);
+  }
+  .dialog h4 {
+    margin: 0 0 4px; font-family: var(--font-display);
+    text-transform: var(--display-transform); letter-spacing: var(--display-tracking);
+    font-style: var(--display-style); font-weight: var(--display-weight);
+    font-size: var(--scale-heading); color: var(--text-primary);
+  }
+  .dialog .lead { font-size: var(--scale-caption); color: var(--text-muted); margin: 0 0 12px; }
+  .dialog dl { margin: 0 0 14px; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
+  .dialog dt {
+    font-size: var(--scale-caption); text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-muted); white-space: nowrap;
+  }
+  .dialog dd { margin: 0; font-size: var(--scale-mono); font-family: var(--font-technical); color: var(--text-secondary); overflow-wrap: anywhere; }
+  .dialog-actions { display: flex; flex-direction: column; gap: 6px; }
+  .dialog-btn {
+    border-radius: var(--radius-control); padding: 8px 10px; font-size: var(--scale-body);
+    cursor: pointer; text-align: center; transition: box-shadow var(--dur-transition), background var(--dur-transition);
+  }
+  .dialog-btn.primary {
+    border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+    color: var(--text-primary); font-weight: 600;
+  }
+  .dialog-btn.primary:hover { box-shadow: 0 0 16px -2px var(--glow); }
+  .dialog-btn.warning {
+    border: 1px solid var(--state-warning); background: color-mix(in srgb, var(--state-warning) 14%, var(--panel));
+    color: #fff2e2;
+  }
+  .dialog-btn.warning:hover { box-shadow: 0 0 16px -4px var(--state-warning-glow); }
+  .dialog-btn.plain {
+    border: 1px solid transparent; background: transparent; color: var(--text-muted); padding: 6px 10px;
+  }
+  .dialog-btn.plain:hover { color: var(--text-secondary); }
+  .dialog-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---- toasts (toast z-layer, top of stack) ---- */
+  .toast-stack {
+    position: absolute; z-index: 8; right: 12px; bottom: 12px;
+    display: flex; flex-direction: column-reverse; gap: 8px;
+    max-width: min(300px, 70%); pointer-events: none;
+  }
+  .toast {
+    pointer-events: auto;
+    position: relative; overflow: hidden;
+    background: var(--panel-raised); border: 1px solid var(--border-hairline);
+    border-radius: 8px; padding: 9px 30px 10px 12px;
+    box-shadow: 0 10px 26px -10px rgba(0,0,0,0.7), 0 0 0 1px var(--border-hairline);
+    display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start;
+    animation: toast-in var(--dur-transition) ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) { .toast { animation: toast-fade var(--dur-transition) ease-out; } }
+  @keyframes toast-in { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes toast-fade { from { opacity: 0; } to { opacity: 1; } }
+  .toast .tdot { width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; background: var(--tc); box-shadow: 0 0 8px var(--tc); }
+  .toast .tmsg { font-size: var(--scale-body); color: var(--text-primary); line-height: 1.3; }
+  .toast .tsub { font-size: var(--scale-caption); color: var(--text-muted); margin-top: 2px; font-family: var(--font-technical); }
+  .toast .tclose {
+    position: absolute; top: 6px; right: 6px; border: 0; background: transparent;
+    color: var(--text-muted); cursor: pointer; font-size: 11px; line-height: 1; padding: 2px;
+  }
+  .toast .tclose:hover { color: var(--text-primary); }
+  .toast .trail {
+    position: absolute; left: 0; bottom: 0; height: 2px; width: 100%;
+    background: var(--tc); transform-origin: left; animation: toast-timer 5s linear forwards;
+  }
+  @media (prefers-reduced-motion: reduce) { .toast .trail { animation: none; opacity: 0.5; } }
+  .toast:hover .trail { animation-play-state: paused; }
+  @keyframes toast-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  .toast.info    { --tc: var(--state-resume); }
+  .toast.success { --tc: var(--state-start); }
+  .toast.warning { --tc: var(--state-warning); }
+  .toast.danger  { --tc: var(--state-stop); }
+
+  /* ---- full-bleed result screens (report / error) — cover content, sit at overlay z ---- */
+  .result-screen {
+    position: absolute; inset: 0; z-index: 6;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+    background: var(--scrim);
+    backdrop-filter: blur(2px);
+  }
+  .result-screen[data-open="true"] { display: flex; }
+  .readout {
+    width: min(440px, 100%);
+    background: var(--panel-raised); border: 1px solid var(--border-hairline);
+    border-radius: calc(10px * var(--radius-mul, 1) * 0.7 + 4px);
+    padding: 18px; box-shadow: 0 24px 60px -16px rgba(0,0,0,0.75), 0 0 40px -18px var(--glow);
+  }
+  .readout-head {
+    display: flex; align-items: center; gap: 9px; margin-bottom: 14px;
+    font-family: var(--font-display); text-transform: var(--display-transform);
+    letter-spacing: var(--display-tracking); font-style: var(--display-style);
+    font-weight: var(--display-weight); font-size: var(--scale-heading);
+  }
+  .readout-head .badge {
+    width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 12px; color: #051108; flex: none;
+  }
+  .readout.ok .badge    { background: var(--state-start); box-shadow: 0 0 12px var(--state-start-glow); }
+  .readout.ok .readout-head { color: var(--state-start-glow); }
+  .readout.err .badge   { background: var(--state-stop); color: #fff; box-shadow: 0 0 12px var(--state-stop-glow); }
+  .readout.err .readout-head { color: var(--state-stop-glow); }
+  .readout dl { display: grid; grid-template-columns: auto 1fr; gap: 7px 12px; margin: 0 0 14px; }
+  .readout dt { font-size: var(--scale-caption); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); white-space: nowrap; }
+  .readout dd { margin: 0; }
+  .copyfield {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--inset); border: 1px solid var(--border-hairline); border-radius: 5px;
+    padding: 3px 4px 3px 8px; font-family: var(--font-technical); font-size: var(--scale-mono);
+    color: var(--text-secondary); font-variant-numeric: tabular-nums;
+  }
+  .copyfield code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .copyfield button {
+    border: 1px solid var(--border-hairline); background: var(--panel); color: var(--text-muted);
+    border-radius: 4px; padding: 1px 6px; font-size: 10px; cursor: pointer; flex: none;
+  }
+  .copyfield button:hover { color: var(--accent); border-color: var(--accent); }
+  .readout .err-cause {
+    background: var(--inset); border-left: 2px solid var(--state-stop); border-radius: 4px;
+    padding: 7px 10px; font-family: var(--font-technical); font-size: var(--scale-mono);
+    color: var(--text-secondary); margin: 0 0 14px; line-height: 1.5;
+  }
+  .readout-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+  .btn {
+    border-radius: var(--radius-control); padding: 8px 12px; font-size: var(--scale-body);
+    cursor: pointer; border: 1px solid var(--border-hairline); background: var(--panel); color: var(--text-secondary);
+    transition: box-shadow var(--dur-transition), color var(--dur-transition), border-color var(--dur-transition);
+  }
+  .btn:hover { color: var(--text-primary); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.primary { border-color: var(--accent); color: var(--text-primary); background: color-mix(in srgb, var(--accent) 16%, var(--panel)); font-weight: 600; }
+  .btn.primary:hover { box-shadow: 0 0 16px -3px var(--glow); }
+  .btn.danger { border-color: var(--state-stop); color: #ffdfe2; background: color-mix(in srgb, var(--state-stop) 14%, var(--panel)); }
+
+  /* progress + terminal error variants */
+  .progress-fill.error { background: var(--state-stop); animation: none; box-shadow: 0 0 10px var(--state-stop-glow); }
+  .terminal .fail { color: var(--state-stop); border-left: 2px solid var(--state-stop); padding-left: 6px; margin-left: -8px; }
+
+  /* ---- side panel modal (recent projects / settings) ---- */
+  .sheet-backdrop {
+    position: absolute; inset: 0; z-index: 7; background: rgba(2,3,6,0.6);
+    display: none; justify-content: flex-end;
+  }
+  .sheet-backdrop[data-open="true"] { display: flex; }
+  .sheet {
+    width: min(340px, 88%); height: 100%; overflow-y: auto;
+    background: var(--panel-raised); border-left: 1px solid var(--border-hairline);
+    box-shadow: -20px 0 50px -20px rgba(0,0,0,0.7);
+    padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    animation: sheet-in var(--dur-transition) ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+  @keyframes sheet-in { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; }
+  .sheet-head h4 {
+    margin: 0; font-family: var(--font-display); text-transform: var(--display-transform);
+    letter-spacing: var(--display-tracking); font-style: var(--display-style);
+    font-weight: var(--display-weight); font-size: var(--scale-heading); color: var(--text-primary);
+  }
+  .sheet-head button { border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+  .sheet-head button:hover { color: var(--text-primary); }
+
+  .recent-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; align-items: center;
+    background: var(--panel); border: 1px solid var(--border-hairline); border-radius: 7px;
+    padding: 9px 10px; cursor: pointer;
+    transition: border-color var(--dur-transition), box-shadow var(--dur-transition);
+  }
+  .recent-row:hover { border-color: var(--accent); box-shadow: 0 0 14px -6px var(--glow); }
+  .recent-row .rname { font-size: var(--scale-heading); color: var(--text-primary); }
+  .recent-row .rmeta { grid-column: 1; font-size: var(--scale-caption); color: var(--text-muted); font-family: var(--font-technical); }
+  .status-pill {
+    grid-row: 1; grid-column: 2; align-self: start;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 2px 8px; border-radius: var(--radius-pill); white-space: nowrap;
+  }
+  .status-pill.ok  { color: var(--state-start); background: color-mix(in srgb, var(--state-start) 16%, transparent); }
+  .status-pill.err { color: var(--state-stop); background: color-mix(in srgb, var(--state-stop) 16%, transparent); }
+  .sheet .empty { color: var(--text-muted); font-size: var(--scale-body); text-align: center; padding: 24px 8px; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: var(--scale-label); text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-secondary); }
+  .field .hint { font-size: var(--scale-caption); color: var(--text-muted); line-height: 1.4; }
+  .field input {
+    background: var(--inset); border: 1px solid var(--border-hairline); border-radius: 6px;
+    padding: 7px 9px; color: var(--text-primary); font-family: var(--font-technical); font-size: var(--scale-mono);
+  }
+  .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .field .key-row { display: flex; gap: 6px; }
+  .field .key-row input { flex: 1; min-width: 0; }
+  .key-state { font-size: var(--scale-caption); color: var(--state-start); }
+
+  /* ---- demo control strip (preview-only scaffolding, not part of the app) ---- */
+  .demo-strip {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    width: min(900px, 100%);
+    background: #0c0f16; border: 1px dashed #2a3346; border-radius: 10px; padding: 10px 12px;
+  }
+  .demo-strip .demo-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6f7d92; margin-right: 4px; }
+  .demo-strip button {
+    border: 1px solid #2a3346; background: #141924; color: #b7c1d1;
+    border-radius: 6px; padding: 6px 11px; font-size: 0.74rem; cursor: pointer;
+  }
+  .demo-strip button:hover { border-color: #3d485c; color: #fff; }
+  .demo-strip button:focus-visible { outline: 2px solid #5b6b84; outline-offset: 2px; }
+
+  /* ============================== TOKEN REFERENCE STRIP ============================== */
+  .tokens-panel {
+    width: min(900px, 100%);
+    background: #0c0f16;
+    border: 1px solid #232a38;
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .tokens-panel h2 {
+    margin: 0 0 3px; font-size: 0.82rem; color: #dfe6f0; font-weight: 600;
+  }
+  .tokens-panel .desc { font-size: 0.78rem; color: #8f9bb0; margin: 0 0 12px; line-height: 1.5; max-width: 70ch; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch {
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid #232a38; border-radius: 6px;
+    padding: 5px 8px; font-size: 0.7rem; color: #b7c1d1;
+    font-family: var(--font-technical, monospace);
+  }
+  .swatch .dot { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1px solid rgba(255,255,255,0.15); }
+
+  @media (max-width: 640px) {
+    .panels { grid-template-columns: 1fr; }
+    .run-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="stage" data-root>
+
+  <div class="stage-head">
+    <h1>Arcane HUD — 5-theme token preview</h1>
+    <p>
+      Live rendering of design/design-specs.md against the mockup layout (title bar, theme/flag
+      pickers, spec+seed panels, the 4 run controls, progress, debug terminal). Switch themes below —
+      note the run-control colors never move (R2) while everything else does. Backgrounds are CSS
+      approximations of your reference art; swap in real files under <code>images/bg/</code> later.
+    </p>
+  </div>
+
+  <div class="theme-picker" role="tablist" aria-label="Theme">
+    <button type="button" data-theme-btn="nova" aria-pressed="true">NOVA · default</button>
+    <button type="button" data-theme-btn="imperator" aria-pressed="false">IMPERATOR · VM-only</button>
+    <button type="button" data-theme-btn="veil" aria-pressed="false">VEIL</button>
+    <button type="button" data-theme-btn="forge" aria-pressed="false">FORGE</button>
+    <button type="button" data-theme-btn="enchant" aria-pressed="false">ENCHANT</button>
+  </div>
+
+  <div class="demo-strip" aria-label="Preview state controls">
+    <span class="demo-label">Демо състояния:</span>
+    <button type="button" data-demo="toast-info">Toast: info</button>
+    <button type="button" data-demo="toast-success">Toast: success</button>
+    <button type="button" data-demo="toast-warning">Toast: warning</button>
+    <button type="button" data-demo="toast-danger">Toast: danger</button>
+    <button type="button" data-demo="report">Готово (report)</button>
+    <button type="button" data-demo="error">Грешка (error)</button>
+    <button type="button" data-demo="recent">Скорошни проекти</button>
+    <button type="button" data-demo="settings">Настройки</button>
+  </div>
+
+  <div class="window" data-theme="nova" id="window">
+    <div class="canvas-layer"><canvas id="stars" aria-hidden="true"></canvas></div>
+    <div class="scrim-layer"></div>
+    <div class="frame-ornament"></div>
+    <span class="corner tl" data-corner>◆</span>
+    <span class="corner bl" data-corner>◆</span>
+
+    <div class="content">
+      <div class="titlebar">
+        <div class="brand">
+          <span class="logo-mark" aria-hidden="true"></span>
+          <span class="title-text">ДПС-НН — Genesis_v6.6.6</span>
+        </div>
+        <div class="win-controls">
+          <button type="button" aria-label="Минимизирай">–</button>
+          <button type="button" aria-label="Максимизирай">▢</button>
+          <button type="button" class="close" aria-label="Затвори">✕</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="group">
+          <span class="chip" id="theme-chip">Тема: Nova</span>
+          <button type="button" class="chip" id="recent-open" style="cursor:pointer" title="Скорошни проекти">⧉ Скорошни</button>
+          <button type="button" class="chip" id="settings-open" style="cursor:pointer" title="Настройки">⚙ Настройки</button>
+        </div>
+        <div class="group">
+          <div class="lang-picker">
+            <button type="button" class="lang-btn" id="lang-btn" aria-haspopup="listbox" aria-expanded="false">
+              <span class="flag-em" id="lang-btn-flag">🇧🇬</span>
+              <span id="lang-btn-label">БГ</span>
+              <span class="caret">▾</span>
+            </button>
+            <ul class="lang-list" id="lang-list" role="listbox" aria-label="Език / Language" data-open="false">
+              <li class="lang-item" role="option" data-lang="bg" aria-selected="true">
+                <span class="flag-em">🇧🇬</span> Български <span class="code">BG</span>
+              </li>
+              <li class="lang-item" role="option" data-lang="en" aria-selected="false">
+                <span class="flag-em">🇬🇧</span> English <span class="code">EN</span>
+              </li>
+              <li class="lang-item" role="option" data-lang="de" aria-selected="false">
+                <span class="flag-em">🇩🇪</span> Deutsch <span class="code">DE</span>
+              </li>
+              <li class="lang-item" role="option" data-lang="ru" aria-selected="false">
+                <span class="flag-em">🇷🇺</span> Русский <span class="code">RU</span>
+              </li>
+              <li class="lang-item" role="option" data-lang="rom" aria-selected="false">
+                <svg class="flag-rom" viewBox="0 0 16 11" aria-hidden="true">
+                  <rect width="16" height="5.5" fill="#1e5fb0"/>
+                  <rect y="5.5" width="16" height="5.5" fill="#2fa84f"/>
+                  <circle cx="8" cy="5.5" r="2" fill="none" stroke="#d0202a" stroke-width="1"/>
+                </svg>
+                Rromani <span class="code">ROM</span>
+              </li>
+              <li class="lang-item" role="option" data-lang="sga" aria-selected="false">
+                <span class="flag-sga" aria-hidden="true">⟠</span> Galactic <span class="code">SGA</span>
+              </li>
+            </ul>
+          </div>
+          <span class="chip">Debug ⌷</span>
+        </div>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <h3>Спецификация</h3>
+          <div class="well">project-spec.facenote.json</div>
+          <div class="select-row"><select><option>facenote-latest.lock.json</option></select></div>
+        </div>
+        <div class="panel">
+          <h3>Осеменяване</h3>
+          <div class="well">seed.facenote.json</div>
+          <div class="select-row">
+            <select><option>seed-facenote-01.json</option></select>
+            <button type="button" class="claude-btn">✦ Claude</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-row-wrap">
+        <div class="run-caption"><span class="lock">⚿</span> Старт / Пауза / Продължи / Спри — R2: заключени във всички теми</div>
+        <div class="run-row">
+          <button type="button" class="run-btn start active">▶ Старт</button>
+          <button type="button" class="run-btn pause">❚❚ Пауза</button>
+          <button type="button" class="run-btn resume" disabled>▶▶ Продължи</button>
+          <button type="button" class="run-btn stop">■ Спри</button>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-label"><span>emit-controllers-views</span><span>6 / 9</span></div>
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+
+      <div class="terminal-wrap">
+        <div class="terminal">
+          <div><span class="accent">[06/09]</span> emit-controllers-views <span class="ok">✓</span> build gate passed</div>
+          <div>&nbsp;&nbsp;→ scaffolding Areas/Client/Products…</div>
+          <div>&nbsp;&nbsp;→ rendering card_grid.sbn × 12</div>
+          <div class="cursor">▌</div>
+        </div>
+      </div>
+
+      <div class="dialog-backdrop" id="dup-dialog" data-open="false" role="alertdialog" aria-modal="true" aria-labelledby="dup-title">
+        <div class="dialog">
+          <h4 id="dup-title">Дублиран билд</h4>
+          <p class="lead">Тази комбинация спецификация + осеменяване вече е генерирана.</p>
+          <dl>
+            <dt>Проект</dt><dd>FaceNote</dd>
+            <dt>Последен билд</dt><dd>2026-07-09 · 21:14</dd>
+            <dt>Изход</dt><dd>out/FaceNote/</dd>
+          </dl>
+          <div class="dialog-actions">
+            <button type="button" class="dialog-btn primary" id="dup-open">Отвори съществуващия</button>
+            <button type="button" class="dialog-btn warning" id="dup-regen">Генерирай отново</button>
+            <button type="button" class="dialog-btn plain" id="dup-cancel">Отказ</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- completion / report readout (build:done → report:get) -->
+      <div class="result-screen" id="report-screen" data-open="false" role="dialog" aria-modal="true" aria-labelledby="report-title">
+        <div class="readout ok">
+          <div class="readout-head" id="report-title"><span class="badge">✓</span> Готово — приложението е генерирано</div>
+          <dl>
+            <dt>URL</dt><dd><div class="copyfield"><code>https://localhost:7043</code><button type="button">копирай</button></div></dd>
+            <dt>Админ</dt><dd><div class="copyfield"><code>admin@facenote.bg · Admin!234</code><button type="button">копирай</button></div></dd>
+            <dt>Потребител</dt><dd><div class="copyfield"><code>demo@facenote.bg · Demo!234</code><button type="button">копирай</button></div></dd>
+            <dt>База данни</dt><dd><div class="copyfield"><code>FaceNote_Dev (LocalDB)</code><button type="button">копирай</button></div></dd>
+            <dt>Старт</dt><dd><div class="copyfield"><code>dotnet run --project out/FaceNote</code><button type="button">копирай</button></div></dd>
+          </dl>
+          <div class="readout-actions">
+            <button type="button" class="btn primary">Отвори в браузър</button>
+            <button type="button" class="btn">Отвори папката</button>
+            <button type="button" class="btn" data-close-result>Нов билд</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- error / retry (build:error) -->
+      <div class="result-screen" id="error-screen" data-open="false" role="dialog" aria-modal="true" aria-labelledby="error-title">
+        <div class="readout err">
+          <div class="readout-head" id="error-title"><span class="badge">!</span> Билдът се провали на етап „verify“</div>
+          <dl>
+            <dt>Етап</dt><dd style="font-family:var(--font-technical);font-size:var(--scale-mono);color:var(--text-secondary)">8 / 9 · verify</dd>
+            <dt>Причина</dt><dd style="font-family:var(--font-technical);font-size:var(--scale-mono);color:var(--text-secondary)">English-leak scan</dd>
+          </dl>
+          <p class="err-cause">EN string leaked into BG build:<br>&nbsp;&nbsp;Views/Products/Index.cshtml:42 — "Add to cart"<br>&nbsp;&nbsp;expected Bulgarian display text.</p>
+          <div class="readout-actions">
+            <button type="button" class="btn primary">Опитай пак от този етап</button>
+            <button type="button" class="btn">Пълен лог</button>
+            <button type="button" class="btn danger" data-close-result>Спри</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- recent projects sheet (logs/registry.json) -->
+      <div class="sheet-backdrop" id="recent-sheet" data-open="false" role="dialog" aria-modal="true" aria-labelledby="recent-title">
+        <aside class="sheet">
+          <div class="sheet-head"><h4 id="recent-title">Скорошни проекти</h4><button type="button" data-close-sheet aria-label="Затвори">✕</button></div>
+          <div class="recent-row">
+            <span class="rname">FaceNote</span>
+            <span class="status-pill ok">Успешен</span>
+            <span class="rmeta">2026-07-09 21:14 · facenote.json + seed-01</span>
+          </div>
+          <div class="recent-row">
+            <span class="rname">FaceNoteEN</span>
+            <span class="status-pill ok">Успешен</span>
+            <span class="rmeta">2026-07-09 21:40 · facenote-en.json + seed-01</span>
+          </div>
+          <div class="recent-row">
+            <span class="rname">CatalogueDemo</span>
+            <span class="status-pill err">Провален</span>
+            <span class="rmeta">2026-07-05 14:02 · catalogue.json + seed-cat</span>
+          </div>
+        </aside>
+      </div>
+
+      <!-- settings sheet (settings:get / settings:set) -->
+      <div class="sheet-backdrop" id="settings-sheet" data-open="false" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <aside class="sheet">
+          <div class="sheet-head"><h4 id="settings-title">Настройки</h4><button type="button" data-close-sheet aria-label="Затвори">✕</button></div>
+          <div class="field">
+            <label for="s-key">Anthropic API ключ</label>
+            <div class="key-row">
+              <input id="s-key" type="password" value="••••••••••••••••" readonly />
+              <button type="button" class="btn">Провери</button>
+            </div>
+            <span class="key-state">✓ Ключът е зададен (само за запис)</span>
+          </div>
+          <div class="field">
+            <label for="s-cmd">Genesis команда</label>
+            <input id="s-cmd" type="text" value="dotnet run --project src/Genesis.Cli --" />
+            <span class="hint">За разширени/пакетни билдове и дебъг. По подразбиране е вградената команда.</span>
+          </div>
+          <div class="field">
+            <label for="s-out">Папка за изход</label>
+            <input id="s-out" type="text" value="out/" />
+          </div>
+          <div class="readout-actions">
+            <button type="button" class="btn primary" data-close-sheet>Запази</button>
+            <button type="button" class="btn" data-close-sheet>Отказ</button>
+          </div>
+        </aside>
+      </div>
+
+      <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+    </div>
+  </div>
+
+  <div class="tokens-panel">
+    <h2 id="tokens-title">NOVA — resolved semantic tokens</h2>
+    <p class="desc" id="tokens-desc">Clean blue circuit HUD, sharpest and most "robotic hi-tech." Default theme, logo shown, techno-mono display face.</p>
+    <div class="swatches" id="swatches"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var THEMES = {
+    nova:      { label: "NOVA",      desc: "Clean blue circuit HUD, sharpest and most “robotic hi-tech.” Default theme, logo shown, techno-mono display face." },
+    imperator: { label: "IMPERATOR", desc: "Veselin Marinov gold-baroque cosmos — opulent and ceremonial. VM-exclusive: no other background ever rides this theme, and the ДПС-НН logo is permanently suppressed because the art self-brands." },
+    veil:      { label: "VEIL",      desc: "Violet “forbidden-knowledge” portal, carved arcane instrumentation. Hosts the Islamic/Sufi and Occult/Veil-of-Isis looks as skins (background + accent swap only)." },
+    forge:     { label: "FORGE",     desc: "Molten soul-forge — aggressive, angular, code-in-lava. Hottest glow, sharpest frame, industrial mono display." },
+    enchant:   { label: "ENCHANT",   desc: "Cyan-magenta aurora with a runic frame. Home of the Standard Galactic Alphabet display treatment." }
+  };
+
+  var win = document.getElementById("window");
+  var chip = document.getElementById("theme-chip");
+  var title = document.getElementById("tokens-title");
+  var desc = document.getElementById("tokens-desc");
+  var swatchWrap = document.getElementById("swatches");
+  var buttons = document.querySelectorAll("[data-theme-btn]");
+
+  var SEMANTIC_VARS = [
+    ["surface.canvas", "--canvas-a"],
+    ["surface.panel", "--panel"],
+    ["text.primary", "--text-primary"],
+    ["text.secondary", "--text-secondary"],
+    ["accent.primary", "--accent"],
+    ["accent.secondary", "--accent-2"],
+    ["state.start", "--state-start"],
+    ["state.pause", "--state-pause"],
+    ["state.resume", "--state-resume"],
+    ["state.stop", "--state-stop"]
+  ];
+
+  function paintSwatches() {
+    var cs = getComputedStyle(win);
+    swatchWrap.innerHTML = "";
+    SEMANTIC_VARS.forEach(function (pair) {
+      var value = cs.getPropertyValue(pair[1]).trim();
+      var el = document.createElement("span");
+      el.className = "swatch";
+      el.innerHTML = '<span class="dot" style="background:' + value + '"></span>' + pair[0];
+      swatchWrap.appendChild(el);
+    });
+  }
+
+  function setTheme(id) {
+    win.setAttribute("data-theme", id);
+    chip.textContent = "Тема: " + THEMES[id].label;
+    title.textContent = THEMES[id].label + " — resolved semantic tokens";
+    desc.textContent = THEMES[id].desc;
+    buttons.forEach(function (b) {
+      var active = b.getAttribute("data-theme-btn") === id;
+      b.setAttribute("aria-pressed", active ? "true" : "false");
+      b.style.setProperty("--pick-accent", getComputedStyle(win).getPropertyValue("--accent"));
+    });
+    paintSwatches();
+  }
+
+  buttons.forEach(function (b) {
+    b.addEventListener("click", function () { setTheme(b.getAttribute("data-theme-btn")); });
+  });
+
+  setTheme("nova");
+
+  /* ---- language picker ---- */
+  var LANGS = {
+    bg:  { flag: "🇧🇬", short: "БГ" },
+    en:  { flag: "🇬🇧", short: "EN" },
+    de:  { flag: "🇩🇪", short: "DE" },
+    ru:  { flag: "🇷🇺", short: "RU" },
+    rom: { flagHtml: document.getElementById("lang-list").querySelector('[data-lang="rom"] svg').outerHTML, short: "ROM" },
+    sga: { flag: "⟠", short: "SGA" }
+  };
+  var langBtn = document.getElementById("lang-btn");
+  var langList = document.getElementById("lang-list");
+  var langBtnFlag = document.getElementById("lang-btn-flag");
+  var langBtnLabel = document.getElementById("lang-btn-label");
+
+  function closeLangList() {
+    langList.setAttribute("data-open", "false");
+    langBtn.setAttribute("aria-expanded", "false");
+  }
+  function selectLang(id) {
+    var l = LANGS[id];
+    langBtnFlag.innerHTML = l.flagHtml || l.flag;
+    langBtnLabel.textContent = l.short;
+    langList.querySelectorAll(".lang-item").forEach(function (li) {
+      li.setAttribute("aria-selected", li.getAttribute("data-lang") === id ? "true" : "false");
+    });
+    closeLangList();
+  }
+  langBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var open = langList.getAttribute("data-open") === "true";
+    langList.setAttribute("data-open", open ? "false" : "true");
+    langBtn.setAttribute("aria-expanded", open ? "false" : "true");
+  });
+  langList.querySelectorAll(".lang-item").forEach(function (li) {
+    li.addEventListener("click", function () { selectLang(li.getAttribute("data-lang")); });
+  });
+  document.addEventListener("click", closeLangList);
+
+  /* ---- duplicate-detection dialog demo ---- */
+  var dupDialog = document.getElementById("dup-dialog");
+  var startBtn = document.querySelector(".run-btn.start");
+  function openDupDialog() {
+    dupDialog.setAttribute("data-open", "true");
+    document.getElementById("dup-open").focus();
+  }
+  function closeDupDialog() { dupDialog.setAttribute("data-open", "false"); }
+  startBtn.addEventListener("click", function (e) { e.preventDefault(); openDupDialog(); });
+  document.getElementById("dup-open").addEventListener("click", closeDupDialog);
+  document.getElementById("dup-cancel").addEventListener("click", closeDupDialog);
+  document.getElementById("dup-regen").addEventListener("click", closeDupDialog);
+
+  /* ---- toasts ---- */
+  var toastStack = document.getElementById("toast-stack");
+  var TOASTS = {
+    info:    { cls: "info",    msg: "Билдът стартира", sub: "spec: facenote.json · seed-01" },
+    success: { cls: "success", msg: "Етап 6/9 завършен", sub: "emit-controllers-views ✓" },
+    warning: { cls: "warning", msg: "Намерен дублиран билд", sub: "последно: 2026-07-09 21:14" },
+    danger:  { cls: "danger",  msg: "Етап „verify“ се провали", sub: "English-leak scan" }
+  };
+  function showToast(kind) {
+    var t = TOASTS[kind];
+    var el = document.createElement("div");
+    el.className = "toast " + t.cls;
+    el.setAttribute("role", "status");
+    el.innerHTML = '<span class="tdot"></span><div><div class="tmsg">' + t.msg +
+      '</div><div class="tsub">' + t.sub + '</div></div>' +
+      '<button type="button" class="tclose" aria-label="Затвори">✕</button><span class="trail"></span>';
+    el.querySelector(".tclose").addEventListener("click", function () { el.remove(); });
+    toastStack.appendChild(el);
+    var timer = setTimeout(function () { el.remove(); }, 5000);
+    el.addEventListener("mouseenter", function () { clearTimeout(timer); });
+    el.addEventListener("mouseleave", function () { timer = setTimeout(function () { el.remove(); }, 2500); });
+  }
+
+  /* ---- result screens + sheets ---- */
+  var reportScreen = document.getElementById("report-screen");
+  var errorScreen = document.getElementById("error-screen");
+  var recentSheet = document.getElementById("recent-sheet");
+  var settingsSheet = document.getElementById("settings-sheet");
+  var overlays = [reportScreen, errorScreen, recentSheet, settingsSheet];
+  function closeOverlays() { overlays.forEach(function (o) { o.setAttribute("data-open", "false"); }); }
+  function openOverlay(el) { closeOverlays(); el.setAttribute("data-open", "true"); }
+
+  document.querySelectorAll("[data-close-result], [data-close-sheet]").forEach(function (b) {
+    b.addEventListener("click", closeOverlays);
+  });
+  [recentSheet, settingsSheet].forEach(function (s) {
+    s.addEventListener("click", function (e) { if (e.target === s) closeOverlays(); });
+  });
+  document.getElementById("recent-open").addEventListener("click", function () { openOverlay(recentSheet); });
+  document.getElementById("settings-open").addEventListener("click", function () { openOverlay(settingsSheet); });
+
+  /* ---- demo strip ---- */
+  document.querySelectorAll("[data-demo]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var d = b.getAttribute("data-demo");
+      if (d.indexOf("toast-") === 0) { showToast(d.slice(6)); return; }
+      if (d === "report") openOverlay(reportScreen);
+      if (d === "error") openOverlay(errorScreen);
+      if (d === "recent") openOverlay(recentSheet);
+      if (d === "settings") openOverlay(settingsSheet);
+    });
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { closeLangList(); closeDupDialog(); closeOverlays(); }
+    if (e.key === "Enter" && dupDialog.getAttribute("data-open") === "true") {
+      document.getElementById("dup-open").click(); /* Enter = quiet default, never the warning action */
+    }
+  });
+
+  /* ambient canvas starfield — z.canvas motion.ambient token, respects reduced-motion */
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var canvas = document.getElementById("stars");
+  var ctx = canvas.getContext("2d");
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var particles = [];
+
+  function resize() {
+    var r = win.getBoundingClientRect();
+    canvas.width = r.width * dpr;
+    canvas.height = r.height * dpr;
+    canvas.style.width = r.width + "px";
+    canvas.style.height = r.height + "px";
+    if (!particles.length) {
+      for (var i = 0; i < 70; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 1.4 * dpr + 0.3,
+          s: (Math.random() * 0.05 + 0.01) * dpr
+        });
+      }
+    }
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  function frame() {
+    var accent = getComputedStyle(win).getPropertyValue("--accent").trim() || "#3fd0ff";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = accent;
+    particles.forEach(function (p) {
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      if (!reduce) {
+        p.y += p.s;
+        if (p.y > canvas.height) { p.y = 0; p.x = Math.random() * canvas.width; }
+      }
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>

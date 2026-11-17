@@ -1,0 +1,119 @@
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+
+{{ ns_open (meta.root_namespace + ".Data") }}
+
+/// <summary>
+/// Данните идват от Data/seed-data.json (генерирани). FK стратегия: символни
+/// ключове - родителите се вмъкват първи (в детерминиран топологичен ред - вж.
+/// ordered_models), реалните ID-та от базата се пазят в речник и децата се
+/// свързват чрез него (без хардкоднати ID-та). Собственически полета (UserId и
+/// сродни) могат да съдържат "$seedUser:N" - резолвира се към реалния GUID на
+/// N-тия сийднат Identity потребител (вж. IdentitySeeder.ResolveSeedUserIdsAsync).
+/// </summary>
+public static class SeedData
+{
+    private static string ResolveUserRef(string? raw, Dictionary<string, string> seedUserIds) =>
+        raw is not null && raw.StartsWith("$seedUser:") && seedUserIds.TryGetValue(raw, out var id)
+            ? id : raw ?? string.Empty;
+
+    public static async Task EnsureSeededAsync({{ meta.project_name }}Context db, IServiceProvider services)
+    {
+{{~ if spec.models.size > 0 ~}}
+        if (await db.{{ spec.models[0].name }}s.AnyAsync()) return; // вече е сийднато
+{{~ end ~}}
+        var env = services.GetRequiredService<IWebHostEnvironment>();
+        var seedUserIds = await IdentitySeeder.ResolveSeedUserIdsAsync(services);
+
+        var jsonPath = Path.Combine(env.ContentRootPath, "Data", "seed-data.json");
+        if (!File.Exists(jsonPath)) return;
+        using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(jsonPath));
+        var refKeys = new Dictionary<string, int>();
+        JsonElement rows;
+
+{{~ for model in ordered_models ~}}
+        // ---- {{ model.name }} ----
+        if (doc.RootElement.TryGetProperty("{{ model.name }}", out rows))
+        {
+            var rowIndex = 0;
+            foreach (var row in rows.EnumerateArray())
+            {
+                rowIndex++;
+                var entity = new {{ model.name }}
+                {
+{{~ for prop in model.properties ~}}
+{{~ if !prop.key && !prop.foreign_key ~}}
+{{~ is_user_ref = string.ends_with prop.name "UserId" ~}}
+{{~ # Nullable-полетата може да липсват в seed JSON-а (по избор) - четем ги със ~}}
+{{~ # TryGetProperty, за да не хвърля GetProperty при липсващ ключ. ~}}
+{{~ el = prop.name | string.downcase ~}}
+{{~ if is_user_ref ~}}
+                    {{ prop.name }} = ResolveUserRef(row.GetProperty("{{ prop.name }}").GetString(), seedUserIds),
+{{~ else if prop.nullable ~}}
+{{~ if prop.type == "string" ~}}
+                    {{ prop.name }} = row.TryGetProperty("{{ prop.name }}", out var {{ el }}El) ? {{ el }}El.GetString() : null,
+{{~ else if prop.type == "int" ~}}
+                    {{ prop.name }} = row.TryGetProperty("{{ prop.name }}", out var {{ el }}El) ? {{ el }}El.GetInt32() : (int?)null,
+{{~ else if prop.type == "decimal" ~}}
+                    {{ prop.name }} = row.TryGetProperty("{{ prop.name }}", out var {{ el }}El) ? {{ el }}El.GetDecimal() : (decimal?)null,
+{{~ else if prop.type == "DateTime" ~}}
+                    {{ prop.name }} = row.TryGetProperty("{{ prop.name }}", out var {{ el }}El) ? DateTime.Parse({{ el }}El.GetString()!) : (DateTime?)null,
+{{~ else if prop.type == "bool" ~}}
+                    {{ prop.name }} = row.TryGetProperty("{{ prop.name }}", out var {{ el }}El) ? {{ el }}El.GetBoolean() : (bool?)null,
+{{~ end ~}}
+{{~ else if prop.type == "string" ~}}
+                    {{ prop.name }} = row.GetProperty("{{ prop.name }}").GetString() ?? string.Empty,
+{{~ else if prop.type == "int" ~}}
+                    {{ prop.name }} = row.GetProperty("{{ prop.name }}").GetInt32(),
+{{~ else if prop.type == "decimal" ~}}
+                    {{ prop.name }} = row.GetProperty("{{ prop.name }}").GetDecimal(),
+{{~ else if prop.type == "DateTime" ~}}
+                    {{ prop.name }} = DateTime.Parse(row.GetProperty("{{ prop.name }}").GetString()!),
+{{~ else if prop.type == "bool" ~}}
+                    {{ prop.name }} = row.GetProperty("{{ prop.name }}").GetBoolean(),
+{{~ else if prop.type == "enum" ~}}
+                    {{ prop.name }} = Enum.Parse<{{ model.name }}{{ prop.name }}>(row.GetProperty("{{ prop.name }}").GetString()!),
+{{~ end ~}}
+{{~ end ~}}
+{{~ end ~}}
+                };
+{{~ for rel in model.relations ~}}
+{{~ if rel.kind == "manyToOne" ~}}
+                // символен ключ -> реално ID от речника (родителят вече е вмъкнат - топологичен ред)
+                entity.{{ rel.target }}Id = refKeys["{{ rel.target }}:" + row.GetProperty("parentRef_{{ rel.target }}").GetString()];
+{{~ end ~}}
+{{~ end ~}}
+                db.{{ model.name }}s.Add(entity);
+                await db.SaveChangesAsync(); // веднага, за да получим ID-то от базата
+                // Всеки ред с "refKey" се записва - независимо дали моделът самият има
+                // собствени relations (Product например е и дете на Category, и родител
+                // на CartItem/OrderItem едновременно).
+                if (row.TryGetProperty("refKey", out var rk))
+                    refKeys["{{ model.name }}:" + rk.GetString()] = entity.Id;
+{{~ if model.images ~}}
+                // One {{ model.name }}Image row per entry in this row's imageKeywords array - the
+                // count varies per row (schema: 1 for "single" mode, 2-4 for "multiple"), so it's
+                // read from the seed JSON itself rather than assumed fixed. Filenames mirror the
+                // exact "{model}-{row}-{img}.jpg" pattern SeedStage.cs's download loop wrote to disk.
+                if (row.TryGetProperty("imageKeywords", out var {{ model.name | string.downcase }}Imgs) && {{ model.name | string.downcase }}Imgs.ValueKind == JsonValueKind.Array)
+                {
+                    var imgIndex = 0;
+                    foreach (var _ in {{ model.name | string.downcase }}Imgs.EnumerateArray())
+                    {
+                        imgIndex++;
+                        db.{{ model.name }}Images.Add(new {{ model.name }}Image
+                        {
+                            {{ model.name }}Id = entity.Id,
+                            RelativePath = "{{ model.images.stored_in | string.replace "wwwroot/" "" }}/{{ model.name | string.downcase }}-" + rowIndex + "-" + imgIndex + ".jpg"
+                        });
+                    }
+                }
+{{~ end ~}}
+            }
+        }
+{{~ end ~}}
+        await db.SaveChangesAsync();
+    }
+}
+{{ ns_close }}

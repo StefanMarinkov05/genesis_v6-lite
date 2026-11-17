@@ -1,0 +1,33 @@
+{
+  "_comment": "Scaffolder residue -> BG. Applied verbatim (case-sensitive) to every scaffolded .cshtml after view move. Order matters: longer phrases first.",
+  "exact": {
+    ">Back to List<": ">Назад към списъка<",
+    ">Create New<": ">Създай нов<",
+    ">Create<": ">Създай<",
+    ">Save<": ">Запази<",
+    ">Edit<": ">Редакция<",
+    ">Delete<": ">Изтриване<",
+    ">Details<": ">Детайли<",
+    "\"Title\"] = \"Details\"": "\"Title\"] = \"Детайли\"",
+    "\"Title\"] = \"Create\"": "\"Title\"] = \"Създаване\"",
+    "\"Title\"] = \"Edit\"": "\"Title\"] = \"Редакция\"",
+    "\"Title\"] = \"Delete\"": "\"Title\"] = \"Изтриване\"",
+    "\"Title\"] = \"Index\"": "\"Title\"] = \"Списък\"",
+    "<h1>Details</h1>": "<h1>Детайли</h1>",
+    "<h1>Create</h1>": "<h1>Създаване</h1>",
+    "<h1>Edit</h1>": "<h1>Редакция</h1>",
+    "<h1>Delete</h1>": "<h1>Изтриване</h1>",
+    "<h1>Index</h1>": "<h1>Списък</h1>",
+    "Are you sure you want to delete this?": "Сигурни ли сте, че искате да изтриете този запис?",
+    "input type=\"submit\" value=\"Create\"": "input type=\"submit\" value=\"Създай\"",
+    "input type=\"submit\" value=\"Save\"": "input type=\"submit\" value=\"Запази\"",
+    "input type=\"submit\" value=\"Delete\"": "input type=\"submit\" value=\"Изтрий\""
+  },
+  "buttonize": [
+    { "match": "<a asp-action=\"Edit\"", "class": "btn btn-sm btn-outline-secondary" },
+    { "match": "<a asp-action=\"Details\"", "class": "btn btn-sm btn-outline-info" },
+    { "match": "<a asp-action=\"Delete\"", "class": "btn btn-sm btn-outline-danger" },
+    { "match": "<a asp-action=\"Index\"", "class": "btn btn-sm btn-outline-secondary" },
+    { "match": "<a asp-action=\"Create\"", "class": "btn btn-sm btn-primary" }
+  ]
+}

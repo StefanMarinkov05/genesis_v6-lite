@@ -1,0 +1,88 @@
+@model IEnumerable<{{ meta.root_namespace }}.Models.Catalogue>
+@{
+    ViewData["Title"] = "Моите каталози";
+}
+{{~
+# Първото не-ключово string свойство на основния модел - етикет на елемента (иначе Id).
+display = "Id"
+for tm in spec.models
+  if tm.name == primary
+    for tp in tm.properties; if !tp.key && tp.type == "string" && display == "Id"; display = tp.name; end; end
+  end
+end
+~}}
+
+<h1>Моите каталози</h1>
+
+<form class="row g-2 mb-4" asp-action="Create" method="post">
+    <div class="col-auto">
+        <input class="form-control" name="name" placeholder="Име на нов каталог" required maxlength="60" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Създай</button>
+    </div>
+</form>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Все още нямате каталози. Създайте първия си от формата по-горе или от бутона "Добави в каталог" на всяка обява.</p>
+}
+
+<div class="row row-cols-1 row-cols-md-2 g-4">
+    @foreach (var cat in Model)
+    {
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>@cat.Name</strong>
+                    <div class="d-flex gap-2 align-items-center">
+                        @if (cat.IsPublic)
+                        {
+                            <a class="badge bg-success text-decoration-none" asp-action="PublicDetails" asp-route-id="@cat.Id" target="_blank">Публичен</a>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Личен</span>
+                        }
+                        <form asp-action="TogglePublic" asp-route-id="@cat.Id" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                @(cat.IsPublic ? "Направи личен" : "Направи публичен")
+                            </button>
+                        </form>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="EditName" asp-route-id="@cat.Id">Преименувай</a>
+                        <form asp-action="Delete" asp-route-id="@cat.Id" method="post"
+                              onsubmit="return confirm('Изтриване на каталога @cat.Name?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Изтрий</button>
+                        </form>
+                    </div>
+                </div>
+                <ul class="list-group list-group-flush">
+                    @if (!cat.Items.Any())
+                    {
+                        <li class="list-group-item text-muted">Празен каталог</li>
+                    }
+                    @{ var ordered = cat.Items.OrderBy(i => i.Position).ThenBy(i => i.Id).ToList(); }
+                    @for (var idx = 0; idx < ordered.Count; idx++)
+                    {
+                        var item = ordered[idx];
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@item.{{ primary }}?.{{ display }}</span>
+                            <span class="btn-group btn-group-sm" role="group">
+                                <form asp-action="MoveItem" method="post" class="d-inline">
+                                    <input type="hidden" name="itemId" value="@item.Id" />
+                                    <input type="hidden" name="direction" value="up" />
+                                    <button type="submit" class="btn btn-outline-secondary" title="Нагоре" @(idx == 0 ? "disabled" : "")>&uarr;</button>
+                                </form>
+                                <form asp-action="MoveItem" method="post" class="d-inline">
+                                    <input type="hidden" name="itemId" value="@item.Id" />
+                                    <input type="hidden" name="direction" value="down" />
+                                    <button type="submit" class="btn btn-outline-secondary" title="Надолу" @(idx == ordered.Count - 1 ? "disabled" : "")>&darr;</button>
+                                </form>
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+</div>

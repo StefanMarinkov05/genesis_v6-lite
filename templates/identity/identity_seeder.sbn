@@ -1,0 +1,67 @@
+using Microsoft.AspNetCore.Identity;
+using {{ meta.root_namespace }}.Models;
+
+{{ ns_open (meta.root_namespace + ".Data") }}
+
+/// <summary>Роли и начални потребители - in-context seeding при стартиране.</summary>
+public static class IdentitySeeder
+{
+    public static async Task SeedAsync(IServiceProvider services)
+    {
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+
+{{~ for role in spec.identity.roles ~}}
+        if (!await roleManager.RoleExistsAsync("{{ role.name }}"))
+            await roleManager.CreateAsync(new IdentityRole("{{ role.name }}"));
+{{~ end ~}}
+
+{{~
+has_first_name = false
+for ep in spec.identity.application_user.extra_properties
+  if ep.name == "FirstName"; has_first_name = true; end
+end
+seed_first_names = ["Ана", "Георги", "Мария", "Иван", "Елена", "Петър", "Виктория", "Стефан"]
+~}}
+{{~ for user in spec.identity.seed_users.users ~}}
+        if (await userManager.FindByEmailAsync("{{ user.email }}") is null)
+        {
+            var u = new ApplicationUser
+            {
+                UserName = "{{ user.email }}",
+                Email = "{{ user.email }}",
+                EmailConfirmed = true,
+{{~ if has_first_name ~}}
+                FirstName = "{{ seed_first_names[for.index % seed_first_names.size] }}",
+{{~ end ~}}
+{{~ # ProfilePicturePath deliberately left unset (null) - seeded users get the shipped generic
+    # avatar-default.svg fallback (ADR-011) instead of a live external URL, which used to be
+    # both a runtime dependency on picsum.photos AND broken at most render sites ("/" + url). ~}}
+            };
+            var result = await userManager.CreateAsync(u, "{{ user.password }}");
+            if (!result.Succeeded)
+                throw new InvalidOperationException("Seed user {{ user.email }}: " + string.Join("; ", result.Errors.Select(e => e.Description)));
+            await userManager.AddToRoleAsync(u, "{{ user.role }}");
+        }
+{{~ end ~}}
+    }
+
+    /// <summary>
+    /// Резолвира индекс от spec.identity.seedUsers.users (0,1,2...) към реалния GUID,
+    /// присвоен от Identity при създаване. Използва се от SeedData за да свърже
+    /// собственически полета ($seedUser:N) с реални потребители.
+    /// </summary>
+    public static async Task<Dictionary<string, string>> ResolveSeedUserIdsAsync(IServiceProvider services)
+    {
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var map = new Dictionary<string, string>();
+{{~ for user in spec.identity.seed_users.users ~}}
+        {
+            var u = await userManager.FindByEmailAsync("{{ user.email }}");
+            if (u is not null) map["$seedUser:{{ for.index }}"] = u.Id;
+        }
+{{~ end ~}}
+        return map;
+    }
+}
+{{ ns_close }}

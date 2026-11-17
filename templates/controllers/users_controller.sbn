@@ -1,0 +1,133 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+using {{ meta.root_namespace }}.Services;
+
+{{~
+# Има ли ApplicationUser поле за профилна снимка - определя дали качваме файл в Edit.
+has_pfp = false
+for ep in spec.identity.application_user.extra_properties
+  if ep.name == "ProfilePicturePath"; has_pfp = true; end
+end
+# Задача 7: admin детайл на потребител ползва споделения UserProfileService (наличен при posts||catalogues).
+needs_profile = features.posts || features.catalogues
+~}}
+{{ ns_open (meta.root_namespace + ".Areas.Admin.Controllers") }}
+
+/// <summary>
+/// Управление на потребители - писан на ръка (не е scaffold-нат), защото
+/// ApplicationUser се управлява през UserManager, а не директно през DbContext.
+/// Правило: администраторът НЕ може да изтрие собствения си акаунт (проверка на сървъра).
+/// </summary>
+[Area("Admin")]
+[Authorize(Roles = "{{ subst spec.identity.roles[0].name }}")]
+public class UsersController : Controller
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+{{~ if has_pfp ~}}
+    private readonly FileUploadService _fileUpload;
+{{~ end ~}}
+{{~ if needs_profile ~}}
+    private readonly UserProfileService _profiles;
+{{~ end ~}}
+
+    public UsersController(UserManager<ApplicationUser> userManager{{ if has_pfp }}, FileUploadService fileUpload{{ end }}{{ if needs_profile }}, UserProfileService profiles{{ end }})
+    {
+        _userManager = userManager;
+{{~ if has_pfp ~}}
+        _fileUpload = fileUpload;
+{{~ end ~}}
+{{~ if needs_profile ~}}
+        _profiles = profiles;
+{{~ end ~}}
+    }
+
+    public async Task<IActionResult> Index()
+    {
+        var users = await _userManager.Users.AsNoTracking().ToListAsync();
+        var roles = new Dictionary<string, string>();
+        foreach (var u in users)
+            roles[u.Id] = string.Join(", ", await _userManager.GetRolesAsync(u));
+        ViewData["UserRoles"] = roles;
+        return View(users);
+    }
+{{~ if needs_profile ~}}
+
+    /// <summary>
+    /// Задача 7: пълна страница на потребител - профилна снимка, данни, обяви, публикации,
+    /// отзиви, последователи/следвани. Всяка връзка води към детайлите на съответния запис.
+    /// Ползва същия UserProfileService като публичния профил (без филтъра за публични каталози).
+    /// </summary>
+    public async Task<IActionResult> Details(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return NotFound();
+        var vm = await _profiles.BuildAsync(id, publicOnly: false);
+        if (vm is null) return NotFound();
+        ViewData["UserRoles"] = string.Join(", ", await _userManager.GetRolesAsync(vm.User));
+        return View(vm);
+    }
+{{~ end ~}}
+
+    public async Task<IActionResult> Edit(string? id)
+    {
+        if (id is null) return NotFound();
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null) return NotFound();
+        return View(user);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(string id, ApplicationUser input, IFormFile? profilePicture)
+    {
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null) return NotFound();
+{{~ for prop in spec.identity.application_user.extra_properties ~}}
+{{~ if prop.name != "ProfilePicturePath" ~}}
+        user.{{ prop.name }} = input.{{ prop.name }};
+{{~ end ~}}
+{{~ end ~}}
+{{~ if has_pfp ~}}
+        // Задача 15: качена нова снимка -> запазваме файла и подменяме пътя; празно поле -> пазим текущата.
+        var savedAvatarPath = await _fileUpload.SaveImageAsync(profilePicture, "uploads/avatars");
+        if (savedAvatarPath is not null) user.ProfilePicturePath = savedAvatarPath;
+{{~ end ~}}
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            foreach (var e in result.Errors) ModelState.AddModelError("", e.Description);
+            return View(user);
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+{{~
+admin_role = ""
+for r in spec.identity.roles; if r.is_admin; admin_role = r.name; break; end; end
+~}}
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(string id)
+    {
+        var currentUserId = _userManager.GetUserId(User);
+        if (id == currentUserId)
+        {
+            TempData["Error"] = "Не можете да изтриете собствения си акаунт.";
+            return RedirectToAction(nameof(Index));
+        }
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null) return RedirectToAction(nameof(Index));
+        // Правило: администратор не може да изтрие друг администратор.
+        var targetRoles = await _userManager.GetRolesAsync(user);
+        if (targetRoles.Contains("{{ subst admin_role }}"))
+        {
+            TempData["Error"] = "Не можете да изтриете администраторски акаунт.";
+            return RedirectToAction(nameof(Index));
+        }
+        await _userManager.DeleteAsync(user);
+        return RedirectToAction(nameof(Index));
+    }
+}
+{{ ns_close }}

@@ -1,0 +1,143 @@
+{{~ # A10 v2: distinctive design overlay (frontend-distinctive-design skill applied).
+    # Concept: printed pazar/classifieds broadsheet - editorial grid, confident display type,
+    # one committed depth language per preset. Breaks from generic on TYPE, COLOR, DEPTH.
+    # Every value is a token so the 6 presets stay coherent. ~}}
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family={{ design.googleFonts }}&display=swap" rel="stylesheet" />
+<style>
+    :root {
+        --accent: {{ design.accent }};
+        --accent-hover: {{ design.accentHover }};
+        --surface: {{ design.surface }};
+        --surface-alt: {{ design.surfaceAlt }};
+        --ink: {{ design.ink }};
+        --ink-soft: color-mix(in srgb, {{ design.ink }} 62%, transparent);
+        --line: color-mix(in srgb, {{ design.ink }} 12%, transparent);
+        --radius: {{ design.radius }};
+        --radius-sm: calc({{ design.radius }} * 0.55);
+        --display-size: {{ design.displayScale }};
+        --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+
+    /* ---- Type: distinctive display + workhorse body, real scale, tight display leading ---- */
+    body {
+        background: var(--surface);
+        color: var(--ink);
+        font-family: {{ design.bodyFont }};
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, h4, h5, h6, .navbar-brand {
+        font-family: {{ design.headingFont }};
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        color: var(--ink);
+    }
+    h1, .display-5 { font-size: var(--display-size); font-weight: 700; }
+    .navbar-brand { font-weight: 700; font-size: 1.35rem; }
+    .lead, .fs-4 { color: var(--ink-soft); }
+
+    /* ---- Color: committed accent, tinted neutrals (no gradient-on-white hero) ---- */
+    .btn-primary, .btn-success {
+        background-color: var(--accent); border-color: var(--accent); font-weight: 600;
+    }
+    .btn-primary:hover, .btn-success:hover { background-color: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-outline-primary, .btn-outline-info { color: var(--accent); border-color: var(--accent); }
+    .btn-outline-primary:hover, .btn-outline-info:hover { background-color: var(--accent); border-color: var(--accent); color: #fff; }
+    a { color: var(--accent); text-underline-offset: 0.2em; }
+    a:hover { color: var(--accent-hover); }
+    .text-primary { color: var(--accent) !important; }
+    .badge.bg-danger, .badge.bg-primary { background-color: var(--accent) !important; }
+    .pagination .page-item.active .page-link { background-color: var(--accent); border-color: var(--accent); }
+    .page-link { color: var(--accent); }
+
+    /* ---- Editorial navbar: rule under it, not a floating bar ---- */
+    .navbar {
+        background: color-mix(in srgb, var(--surface) 88%, #fff) !important;
+        border-bottom: 2px solid var(--ink);
+        padding-top: 0.9rem; padding-bottom: 0.9rem;
+    }
+    .navbar .nav-link { color: var(--ink-soft) !important; font-weight: 500; }
+    .navbar .nav-link:hover { color: var(--accent) !important; }
+
+    /* ---- Buttons/inputs share one radius scale ---- */
+    .btn { border-radius: var(--radius-sm); font-family: {{ design.bodyFont }}; }
+    .form-control, .form-select {
+        border-radius: var(--radius-sm);
+        border-color: var(--line);
+        padding: 0.6rem 0.85rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+
+    /* ---- Cards: ONE committed depth language per preset ---- */
+{{~ if design.depth == "layered" ~}}
+    /* layered: soft stacked shadows, no border */
+    .card {
+        border: none; border-radius: var(--radius); background: #fff;
+        box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 12px rgba(16,24,40,.06);
+        transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+    }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(16,24,40,.12), 0 6px 12px rgba(16,24,40,.07); }
+{{~ else if design.depth == "hairline" ~}}
+    /* hairline: flat, 1px ruled borders, tint-fill on hover - print-catalogue feel */
+    .card {
+        border: 1px solid var(--line); border-radius: var(--radius); background: #fff; box-shadow: none;
+        transition: border-color .2s var(--ease), background .2s var(--ease);
+    }
+    .card:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 3%, #fff); }
+{{~ else ~}}
+    /* offset: neo-brutalist hard shadow, thick border, snap on hover */
+    .card {
+        border: 2px solid var(--ink); border-radius: var(--radius); background: #fff;
+        box-shadow: 5px 5px 0 var(--ink);
+        transition: transform .12s var(--ease), box-shadow .12s var(--ease);
+    }
+    .card:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--accent); }
+{{~ end ~}}
+    .card-footer { background: var(--surface-alt); border-top: 1px solid var(--line); }
+    .card-title { font-family: {{ design.headingFont }}; font-weight: 600; }
+
+    /* ---- Hero: full-bleed tinted band, oversized headline, left-aligned (not centered-generic) ---- */
+    .hero {
+        background: linear-gradient(120deg, var(--surface-alt), color-mix(in srgb, var(--accent) 8%, var(--surface)));
+        border-radius: var(--radius);
+        border-left: 6px solid var(--accent);
+        text-align: left !important;
+    }
+    .hero .display-5 { max-width: 16ch; }
+
+    /* ---- Tables: editorial ruled rows ---- */
+    .table { --bs-table-bg: transparent; }
+    .table thead th {
+        font-family: {{ design.headingFont }}; text-transform: uppercase;
+        font-size: .72rem; letter-spacing: .06em; color: var(--ink-soft);
+        border-bottom: 2px solid var(--ink);
+    }
+    .table td, .table th { border-color: var(--line); }
+
+    /* ---- Card imagery: signature hover zoom (the one memorable micro-interaction) ---- */
+    .card-img-top {
+        transition: transform .4s var(--ease);
+        will-change: transform;
+    }
+    .card { overflow: hidden; }
+    .card:hover .card-img-top { transform: scale(1.06); }
+    /* price/first card-text gets weight so listings scan like a catalogue */
+    .card-body .card-text:first-of-type {
+        font-family: {{ design.headingFont }};
+        font-weight: 700; font-size: 1.15rem; color: var(--accent);
+    }
+
+    /* ---- Focus visibility (a11y + professionalism tell) ---- */
+    a:focus-visible, .btn:focus-visible, .form-control:focus-visible, .nav-link:focus-visible {
+        outline: 2px solid var(--accent); outline-offset: 2px;
+    }
+    @@media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; animation: none !important; }
+        .card:hover { transform: none; }
+    }
+</style>

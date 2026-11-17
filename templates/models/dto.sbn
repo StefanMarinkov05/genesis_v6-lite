@@ -1,0 +1,11 @@
+{{ ns_open (meta.root_namespace + ".Models.Dto") }}
+
+// Композиран от: {{ dto.composed_of | array.join ", " }}
+public class {{ dto.name }}
+{
+{{~ for p in dto.properties ~}}
+    // <- {{ p.source }}
+    public string {{ p.name }} { get; set; } = string.Empty;
+{{~ end ~}}
+}
+{{ ns_close }}

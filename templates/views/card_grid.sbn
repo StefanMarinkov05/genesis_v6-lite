@@ -1,0 +1,251 @@
+{{~ # model е подаден от stage-а (изведен от пътя на изгледа) ~}}
+@model IEnumerable<{{ meta.root_namespace }}.Models.{{ model.name }}>
+@{
+    ViewData["Title"] = "{{ model.name }} - каталог";
+}
+
+<h1>Каталог</h1>
+
+{{~ # JS търсачка - задължителна за cardGrid (по спецификация) ~}}
+{{~ owner_sorting = owner && owner.sorting && owner.sorting.enabled ~}}
+<form class="row mb-3 g-2" method="get">
+    <div class="col-md-4">
+        <input class="form-control" id="searchBox" name="search" value="@ViewData["Search"]" type="text" placeholder="Търсене..." />
+    </div>
+{{~ if owner_sorting ~}}
+    <div class="col-md-3">
+        <select class="form-select" name="sortBy" onchange="this.form.submit()">
+            <option value="">Подреди по...</option>
+{{~
+# Task 24b: показвай българския displayName на полето, не суровото име.
+# CreatedAt/UpdatedAt живеят в AuditableEntity (не в model.properties), но имат
+# фиксирани български етикети в auditable_entity.sbn - огледай ги тук.
+~}}
+{{~ for f in owner.sorting.fields ~}}
+{{~ f_label = f ~}}
+{{~ if f == "CreatedAt" ~}}{{~ f_label = "Дата на добавяне" ~}}
+{{~ else if f == "UpdatedAt" ~}}{{~ f_label = "Последна промяна" ~}}
+{{~ else ~}}
+{{~ for p in model.properties; if p.name == f && p.display_name; f_label = p.display_name; end; end ~}}
+{{~ end ~}}
+            <option value="{{ f }}" selected="@(ViewData["SortBy"]?.ToString() == "{{ f }}")">{{ f_label }}</option>
+{{~ end ~}}
+        </select>
+    </div>
+    {{~ # Task 24a: посока на сортиране - показва се винаги когато е активно сортиране ~}}
+    <div class="col-md-2">
+        <select class="form-select" name="sortDir" onchange="this.form.submit()">
+            <option value="asc" selected="@(ViewData["SortDir"]?.ToString() != "desc")">↑ Нарастващо</option>
+            <option value="desc" selected="@(ViewData["SortDir"]?.ToString() == "desc")">↓ Намаляващо</option>
+        </select>
+    </div>
+{{~ end ~}}
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Търси</button>
+    </div>
+</form>
+
+<div class="row row-cols-1 row-cols-md-3 g-4" id="cardContainer">
+    @foreach (var item in Model)
+    {
+        <div class="col card-item">
+            <div class="card h-100">
+                @if (item.Images.Count > 0)
+                {
+                    <img src="/@item.Images[0].RelativePath" class="card-img-top" alt="изображение" style="height: 200px; object-fit: cover;" />
+                }
+                else
+                {
+                    <img src="/images/product-default.svg" class="card-img-top" alt="няма снимка" style="height: 200px; object-fit: cover;" />
+                }
+                <div class="card-body">
+{{~
+# page.card mixes real model properties (Title, Price...) with UI pseudo-fields
+# (image, detailsButton, addToCatalogueButton) - only render @item.X for the former.
+first = true
+~}}
+{{~ for field in page.card ~}}
+{{~ is_prop = false ~}}
+{{~ for p in model.properties; if p.name == field; is_prop = true; end; end ~}}
+{{~ if is_prop && first ~}}
+                    <h5 class="card-title searchable">@item.{{ field }}</h5>
+{{~ first = false ~}}
+{{~ else if is_prop ~}}
+                    <p class="card-text searchable">@item.{{ field }}</p>
+{{~ end ~}}
+{{~ end ~}}
+{{~ if has_rating ~}}
+                    <div class="text-warning">
+                        @{
+                            var itemAvgRatings = (IDictionary<int, double?>)(ViewData["AverageRatings"] ?? new Dictionary<int, double?>());
+                            var itemAvg = itemAvgRatings.TryGetValue(item.{{ model.properties[0].name }}, out var itemAvgVal) ? itemAvgVal : null;
+                            var itemAvgDisplay = itemAvg ?? 0;
+                        }
+                        @for (var i = 1; i <= 5; i++) { <span>@(i <= Math.Round(itemAvgDisplay) ? "★" : "☆")</span> }
+                    </div>
+{{~ end ~}}
+                </div>
+                <div class="card-footer d-flex gap-2">
+{{~ for field in page.card ~}}
+{{~ if field == "detailsButton" ~}}
+                    <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@item.{{ model.properties[0].name }}">Детайли</a>
+{{~ end ~}}
+{{~ if field == "addToCatalogueButton" ~}}
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <button class="btn btn-sm btn-primary catalogue-open" type="button"
+                                data-item-id="@item.{{ model.properties[0].name }}">Добави в каталог</button>
+                    }
+                    else
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-area="Identity" asp-page="/Account/Login">Влезте, за да добавите</a>
+                    }
+{{~ end ~}}
+{{~ end ~}}
+{{~ if features.orders ~}}
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <form asp-area="Client" asp-controller="Cart" asp-action="Add" asp-route-itemId="@item.{{ model.properties[0].name }}" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-primary">Добави в количката</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-area="Identity" asp-page="/Account/Login">Влезте, за да добавите</a>
+                    }
+{{~ end ~}}
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@{
+    var currentPage = (int)(ViewData["Page"] ?? 1);
+    var totalPages = (int)(ViewData["TotalPages"] ?? 1);
+}
+@* Task 11: безкрайно скролиране вместо страниране - следващите страници се дозареждат
+   автоматично при достигане на дъното (виж скрипта по-долу). *@
+<div id="scrollSentinel" class="text-center text-muted py-4"
+     data-current-page="@currentPage" data-total-pages="@totalPages">
+    @if (currentPage < totalPages)
+    {
+        <div class="spinner-border spinner-border-sm" role="status"></div>
+        <span class="ms-2">Зареждане на още...</span>
+    }
+</div>
+
+<div class="modal fade" id="catalogueModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добави в каталог</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="catalogueModalBody">Зареждане...</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Модал "Добави в каталог": зарежда партиала с каталозите на потребителя,
+    // + / - превключва принадлежност, формата създава нов каталог и добавя записа.
+    (function () {
+        var modalEl = document.getElementById('catalogueModal');
+        var modal = new bootstrap.Modal(modalEl);
+        var body = document.getElementById('catalogueModalBody');
+        var token = function () {
+            var el = document.querySelector('input[name="__RequestVerificationToken"]');
+            return el ? el.value : '';
+        };
+        function loadPicker(itemId) {
+            fetch('/Client/Catalogues/Picker?itemId=' + itemId)
+                .then(function (r) { return r.text(); })
+                .then(function (html) { body.innerHTML = html; wire(itemId); });
+        }
+        function wire(itemId) {
+            body.querySelectorAll('.catalogue-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var fd = new URLSearchParams();
+                    fd.append('catalogueId', btn.dataset.catalogueId);
+                    fd.append('itemId', btn.dataset.itemId);
+                    fd.append('__RequestVerificationToken', token());
+                    fetch('/Client/Catalogues/Toggle', { method: 'POST', body: fd })
+                        .then(function () { loadPicker(itemId); });
+                });
+            });
+            var form = body.querySelector('.catalogue-create-form');
+            if (form) form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var fd = new URLSearchParams();
+                fd.append('name', form.querySelector('input[name=name]').value);
+                fd.append('itemId', form.dataset.itemId);
+                fd.append('__RequestVerificationToken', token());
+                fetch('/Client/Catalogues/Create', { method: 'POST', body: fd })
+                    .then(function () { loadPicker(itemId); });
+            });
+        }
+        document.querySelectorAll('.catalogue-open').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                modal.show();
+                loadPicker(btn.dataset.itemId);
+            });
+        });
+    })();
+</script>
+<form class="d-none">@Html.AntiForgeryToken()</form>
+<script>
+    // Клиентска търсачка: филтрира картите по въведения текст (без заявки към сървъра).
+    // Изнесена като функция, за да се приложи и върху дозаредените (infinite scroll) карти.
+    function filterCards(scope) {
+        var term = (document.getElementById('searchBox').value || '').toLowerCase();
+        (scope || document).querySelectorAll('.card-item').forEach(function (card) {
+            var text = Array.from(card.querySelectorAll('.searchable'))
+                .map(function (el) { return el.textContent.toLowerCase(); })
+                .join(' ');
+            card.style.display = text.indexOf(term) !== -1 ? '' : 'none';
+        });
+    }
+    document.getElementById('searchBox').addEventListener('input', function () { filterCards(); });
+
+    // Task 11: безкрайно скролиране. Наблюдаваме сентинел в дъното; при достигане зареждаме
+    // следващата страница от СЪЩИЯ Index маршрут (?page=N, запазвайки search/sortBy/sortDir),
+    // изваждаме .card-item елементите от върнатия HTML и ги добавяме към контейнера.
+    (function () {
+        var sentinel = document.getElementById('scrollSentinel');
+        var container = document.getElementById('cardContainer');
+        if (!sentinel || !container) return;
+        var current = parseInt(sentinel.dataset.currentPage, 10) || 1;
+        var total = parseInt(sentinel.dataset.totalPages, 10) || 1;
+        var loading = false;
+
+        function finish() { sentinel.innerHTML = ''; if (observer) observer.disconnect(); }
+        if (current >= total) finish();
+
+        function loadNext() {
+            if (loading || current >= total) return;
+            loading = true;
+            var params = new URLSearchParams(window.location.search);
+            params.set('page', current + 1);
+            fetch(window.location.pathname + '?' + params.toString(), { headers: { 'X-Requested-With': 'fetch' } })
+                .then(function (r) { return r.text(); })
+                .then(function (html) {
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var cards = doc.querySelectorAll('#cardContainer .card-item');
+                    cards.forEach(function (c) { container.appendChild(c); });
+                    current++;
+                    filterCards(container);
+                    loading = false;
+                    if (current >= total || cards.length === 0) finish();
+                })
+                .catch(function () { loading = false; });
+        }
+
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) { if (e.isIntersecting) loadNext(); });
+        }, { rootMargin: '200px' });
+        observer.observe(sentinel);
+    })();
+</script>
+}

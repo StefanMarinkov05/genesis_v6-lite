@@ -1,0 +1,31 @@
+{
+  "sdk": "10.0.100",
+  "comment": "EN->BG replacement map for scaffolded Identity Razor pages. Applied longest-key-first. CALIBRATE against a real scaffold of your SDK - these keys must match the scaffolder output byte-for-byte.",
+  "replacements": {
+    "Use a local account to log in.": "Използвайте локален акаунт за вход.",
+    "Use another service to log in.": "Използвайте друга услуга за вход.",
+    "Create a new account.": "Създайте нов акаунт.",
+    "Resend email confirmation": "Изпрати отново потвърждение по имейл",
+    "Forgot your password?": "Забравена парола?",
+    "Register as a new user": "Регистрирайте се като нов потребител",
+    "Confirm password": "Потвърдете паролата",
+    "Remember me?": "Запомни ме?",
+    "Log in": "Вход",
+    "Log out": "Изход",
+    "Register": "Регистрация",
+    "Password": "Парола",
+    "Email": "Имейл",
+    "Manage your account": "Управление на акаунта",
+    "Change your account settings": "Промяна на настройките на акаунта",
+    "Profile": "Профил",
+    "Username": "Потребителско име",
+    "Enter your phone number": "Въведете телефонен номер",
+    "Phone number": "Телефонен номер",
+    "You have successfully logged out of the application.": "Успешно излязохте от приложението.",
+    "Click here to log in": "Натиснете тук за вход",
+    "Invalid login attempt.": "Невалиден опит за вход.",
+    "This email is already taken.": "Този имейл вече е зает.",
+    "Error": "Грешка",
+    "ViewData[\"Title\"] = \"Вход\";": "ViewData[\"Title\"] = \"Вход\";"
+  }
+}

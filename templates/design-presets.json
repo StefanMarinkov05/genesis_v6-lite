@@ -1,0 +1,89 @@
+{
+  "_comment": "A10 design presets. Each pairs a bootswatch base with an accent, neutral tint, font pairing, and elevation language. Selected via meta.style.preset; falls back to variation-chosen if unset.",
+  "presets": {
+    "midnight": {
+      "base": "flatly",
+      "accent": "#4f46e5",
+      "accentHover": "#4338ca",
+      "surface": "#f8f9fc",
+      "surfaceAlt": "#eef0f7",
+      "ink": "#1a1c2e",
+      "headingFont": "'Space Grotesk', sans-serif",
+      "bodyFont": "'Inter', sans-serif",
+      "googleFonts": "Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600",
+      "radius": "0.75rem",
+      "depth": "layered",
+      "displayScale": "clamp(2.2rem, 5vw, 3.4rem)"
+    },
+    "sunset": {
+      "base": "cosmo",
+      "accent": "#ea580c",
+      "accentHover": "#c2410c",
+      "surface": "#fffaf5",
+      "surfaceAlt": "#fdeede",
+      "ink": "#2b1a12",
+      "headingFont": "'Fraunces', serif",
+      "bodyFont": "'Nunito Sans', sans-serif",
+      "googleFonts": "Fraunces:opsz,wght@9..144,500;9..144,600&family=Nunito+Sans:wght@400;600;700",
+      "radius": "1rem",
+      "depth": "offset",
+      "displayScale": "clamp(2.2rem, 5vw, 3.4rem)"
+    },
+    "forest": {
+      "base": "sandstone",
+      "accent": "#059669",
+      "accentHover": "#047857",
+      "surface": "#f6faf7",
+      "surfaceAlt": "#e6f2ea",
+      "ink": "#14241b",
+      "headingFont": "'Bricolage Grotesque', sans-serif",
+      "bodyFont": "'Source Sans 3', sans-serif",
+      "googleFonts": "Bricolage+Grotesque:wght@500;600;700&family=Source+Sans+3:wght@400;500;600",
+      "radius": "0.5rem",
+      "depth": "hairline",
+      "displayScale": "clamp(2.2rem, 5vw, 3.4rem)"
+    },
+    "royal": {
+      "base": "lumen",
+      "accent": "#7c3aed",
+      "accentHover": "#6d28d9",
+      "surface": "#faf9fe",
+      "surfaceAlt": "#f0ecfb",
+      "ink": "#1f1533",
+      "headingFont": "'Clash Display', 'Space Grotesk', sans-serif",
+      "bodyFont": "'Inter', sans-serif",
+      "googleFonts": "Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600",
+      "radius": "0.875rem",
+      "depth": "layered",
+      "displayScale": "clamp(2.2rem, 5vw, 3.4rem)"
+    },
+    "slate": {
+      "base": "yeti",
+      "accent": "#0891b2",
+      "accentHover": "#0e7490",
+      "surface": "#f7fafb",
+      "surfaceAlt": "#e8f1f4",
+      "ink": "#152025",
+      "headingFont": "'DM Sans', sans-serif",
+      "bodyFont": "'DM Sans', sans-serif",
+      "googleFonts": "DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700",
+      "radius": "0.625rem",
+      "depth": "hairline",
+      "displayScale": "clamp(2.2rem, 5vw, 3.4rem)"
+    },
+    "rose": {
+      "base": "journal",
+      "accent": "#e11d48",
+      "accentHover": "#be123c",
+      "surface": "#fff8fa",
+      "surfaceAlt": "#fce7ed",
+      "ink": "#2a121a",
+      "headingFont": "'Playfair Display', serif",
+      "bodyFont": "'Karla', sans-serif",
+      "googleFonts": "Playfair+Display:wght@600;700&family=Karla:wght@400;500;700",
+      "radius": "0.75rem",
+      "depth": "offset",
+      "displayScale": "clamp(2.2rem, 5vw, 3.4rem)"
+    }
+  }
+}

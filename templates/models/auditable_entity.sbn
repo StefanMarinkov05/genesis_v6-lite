@@ -1,0 +1,21 @@
+using System.ComponentModel.DataAnnotations;
+
+{{ ns_open (meta.root_namespace + ".Models") }}
+
+/// <summary>
+/// Базов клас за всички таблици: одитни времеви печати. UpdatedAt се поддържа
+/// автоматично от SaveChanges в контекста; сортирането "по дата на добавяне"
+/// разчита изцяло на CreatedAt.
+/// </summary>
+public abstract class AuditableEntity
+{
+{{~ if conventions.timestamps.created_at ~}}
+    [Display(Name = "Дата на добавяне")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+{{~ end ~}}
+{{~ if conventions.timestamps.updated_at ~}}
+    [Display(Name = "Последна промяна")]
+    public DateTime? UpdatedAt { get; set; }
+{{~ end ~}}
+}
+{{ ns_close }}

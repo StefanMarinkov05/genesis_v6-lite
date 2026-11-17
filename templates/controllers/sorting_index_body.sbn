@@ -1,0 +1,53 @@
+public async Task<IActionResult> Index(string? search, string? sortBy, string? sortDir, int page = 1)
+    {
+{{~ m = null; for x in spec.models; if x.name == controller.model; m = x; end; end ~}}
+{{~ page_size = 20 ~}}
+{{~ if controller.pagination; page_size = controller.pagination.page_size; end ~}}
+        const int pageSize = {{ page_size }};
+        // Търсене + сортиране + странициране в контролера (по спецификация).
+        var query = _context.{{ controller.model }}s
+            .AsNoTracking()
+{{~ if m.images ~}}
+            .Include(x => x.Images)
+{{~ end ~}}
+{{~ for rel in m.relations ~}}
+            .Include(x => x.{{ rel.navigation }})
+{{~ end ~}}
+{{~ if has_rating ~}}
+            .Include(x => x.Reviews)
+{{~ end ~}}
+            .AsQueryable();
+
+{{~ search_fields = [] ~}}
+{{~ for pp in m.properties; if pp.type == "string" && !pp.key; search_fields = search_fields | array.add pp.name; end; end ~}}
+{{~ if search_fields.size > 0 ~}}
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(x => {{ for sf in search_fields }}x.{{ sf }}.Contains(term){{ if !for.last }} || {{ end }}{{ end }});
+        }
+{{~ end ~}}
+
+        var descending = sortDir == "desc";
+        query = sortBy switch
+        {
+{{~ for field in controller.sorting.fields ~}}
+            "{{ field }}" => descending ? query.OrderByDescending(x => x.{{ field }}) : query.OrderBy(x => x.{{ field }}),
+{{~ end ~}}
+            _ => query.OrderBy(x => x.{{ m.properties[0].name }}),
+        };
+        ViewData["SortBy"] = sortBy;
+        ViewData["SortDir"] = sortDir;
+        ViewData["Search"] = search;
+
+        var total = await query.CountAsync();
+        ViewData["Page"] = page;
+        ViewData["TotalPages"] = (int)Math.Ceiling(total / (double)pageSize);
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+{{~ if has_rating ~}}
+        ViewData["AverageRatings"] = items.ToDictionary(
+            x => x.{{ m.properties[0].name }},
+            x => x.Reviews.Where(r => !r.IsDeleted).Any() ? x.Reviews.Where(r => !r.IsDeleted).Average(r => (double)r.Stars) : (double?)null);
+{{~ end ~}}
+        return View(items);
+    }

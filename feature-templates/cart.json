@@ -1,0 +1,56 @@
+{
+  "models": [
+    {
+      "name": "CartItem",
+      "file": "Models/CartItem.cs",
+      "properties": [
+        {
+          "name": "Id",
+          "type": "int",
+          "key": true
+        },
+        {
+          "name": "UserId",
+          "type": "string",
+          "displayName": "Потребител",
+          "validations": [
+            {
+              "attribute": "Required",
+              "errorMessage": "Потребителят е задължителен."
+            }
+          ]
+        },
+        {
+          "name": "Quantity",
+          "type": "int",
+          "displayName": "Количество",
+          "validations": [
+            {
+              "attribute": "Range",
+              "args": [
+                1,
+                100
+              ],
+              "errorMessage": "Количеството трябва да е между 1 и 100."
+            }
+          ]
+        }
+      ],
+      "relations": [],
+      "displayName": "Артикули в кошница",
+      "isLookup": true
+    }
+  ],
+  "dtos": [],
+  "controllers": [
+    {
+      "name": "CartController",
+      "file": "Controllers/CartController.cs",
+      "model": "CartItem",
+      "generatedBy": "template",
+      "actions": [
+        "Index"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+using {{ meta.root_namespace }}.Services;
+
+{{ ns_open (meta.root_namespace + ".Areas.Client.Controllers") }}
+
+/// <summary>Отзиви със звездна оценка (1-5), закачени за конкретен продукт (A3).</summary>
+[Area("Client")]
+public class ReviewsController : Controller
+{
+    private readonly {{ meta.project_name }}Context _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly FileUploadService _fileUpload;
+
+    public ReviewsController({{ meta.project_name }}Context context, UserManager<ApplicationUser> userManager, FileUploadService fileUpload)
+    {
+        _context = context;
+        _userManager = userManager;
+        _fileUpload = fileUpload;
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(int productId, int stars, string? text, IFormFile? image)
+    {
+        if (stars is < 1 or > 5) return BadRequest();
+        // Задача 16: по избор прикачена снимка към отзива - валидира се и се записва от FileUploadService.
+        var imagePath = await _fileUpload.SaveImageAsync(image, "uploads/reviews");
+        _context.Reviews.Add(new Review
+        {
+            {{ primary }}Id = productId,
+            AuthorUserId = _userManager.GetUserId(User)!,
+            Stars = stars,
+            Text = string.IsNullOrWhiteSpace(text) ? null : text.Trim(),
+            ImagePath = imagePath
+        });
+        await _context.SaveChangesAsync();
+        // обратно към продукта, чиито отзиви току-що допълнихме
+        return RedirectToAction("Details", "{{ primary }}s", new { area = "Client", id = productId });
+    }
+}
+{{ ns_close }}

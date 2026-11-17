@@ -1,0 +1,38 @@
+@model IEnumerable<{{ meta.root_namespace }}.Models.Catalogue>
+@{
+    ViewData["Title"] = "Публични каталози";
+    var owners = ViewData["Owners"] as IDictionary<string, {{ meta.root_namespace }}.Models.ApplicationUser>
+        ?? new Dictionary<string, {{ meta.root_namespace }}.Models.ApplicationUser>();
+}
+{{~ has_fn = false ~}}
+{{~ for p in spec.identity.application_user.extra_properties; if p.name == "FirstName"; has_fn = true; end; end ~}}
+
+<h1>Публични каталози</h1>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Все още няма публични каталози.</p>
+}
+
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    @foreach (var cat in Model)
+    {
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">@cat.Name</h5>
+                    <p class="card-text text-muted">@cat.Items.Count() записа</p>
+                    @if (owners.TryGetValue(cat.UserId, out var owner))
+                    {
+                        <p class="card-text small">
+                            От: <a asp-area="Client" asp-controller="Profiles" asp-action="Public" asp-route-id="@ProfileHash.Of(owner.Id)">@(owner.{{ if has_fn }}FirstName ?? owner.Email{{ else }}Email{{ end }})</a>
+                        </p>
+                    }
+                </div>
+                <div class="card-footer">
+                    <a class="btn btn-sm btn-outline-primary" asp-action="PublicDetails" asp-route-id="@cat.Id">Разгледай</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>

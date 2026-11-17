@@ -1,0 +1,931 @@
+/* NOVA theme + shared Arcane-HUD system, ported from design/preview.html for the MVP
+   (spec B.0: NOVA only, EN only). Component class names are kept identical to the preview
+   so the markup ports 1:1 and later themes drop in as [data-theme] token blocks. The only
+   structural change from the preview is that .window fills the frameless OS window instead
+   of sitting as a 56.25rem card. Every value here is a semantic token from design-specs.md. */
+
+*, *::before, *::after { box-sizing: border-box; }
+/* Root font-size drives EVERY rem-based value in this file (all component paddings/gaps/
+   radii/icon-sizes/font-sizes were converted from px to rem for exactly this reason) - so
+   resizing/maximizing the window scales the whole UI proportionally on large displays instead
+   of staying pinned at its 900px-minimum-window size with dead space around it. Floors at 16px
+   (today's default, so the enforced 900x620 minimum window looks pixel-identical to before this
+   change) and caps at 24px (1.5x) so an ultrawide/4K maximize doesn't blow controls up absurdly.
+   Two-point linear fit: 16px at 900px window width, 24px at 2400px width. */
+html { font-size: clamp(16px, 0.5333vw + 11.2px, 24px); }
+html, body { height: 100%; margin: 0; }
+body {
+  background: #050608;
+  color: #e9edf3;
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  /* Site-wide default (Stefan: "center the text everywhere in the gui") - cascades to every
+     block of text unless a more specific rule overrides it. text-align is inherited, so this one
+     declaration covers headings/labels/wells/captions/buttons/dialogs without touching each
+     rule individually; the one deliberate exception is text INPUTS (below) - centering text as
+     you type it looks broken, not "centered", so those stay left-aligned, the normal convention. */
+  text-align: center;
+}
+button { font: inherit; color: inherit; }
+input, select { text-align: left; }
+
+/* ---- shared system tokens (invariant across themes; R2/R7) ---- */
+:root {
+  --state-start: #34d17a;  --state-start-glow: #7cf0ad;
+  --state-pause: #f5a623;  --state-pause-glow: #ffcf7a;
+  --state-resume: #38bdf8; --state-resume-glow: #8fe0ff;
+  --state-stop: #ff4d5e;   --state-stop-glow: #ff98a2;
+  --state-warning: #f2994a; --state-warning-glow: #ffb87a;
+
+  --radius-panel: 0.625rem; --radius-control: 0.375rem; --radius-pill: 999px;
+  --font-body: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-technical: "Cascadia Code", "Consolas", ui-monospace, monospace;
+  --dur-transition: 150ms; --dur-pulse: 1.8s; --dur-shimmer: 2s; --dur-ambient: 42s;
+
+  --scale-title: 1.35rem; --scale-heading: 1.05rem; --scale-label: 0.72rem;
+  --scale-body: 0.92rem; --scale-mono: 0.8rem; --scale-caption: 0.68rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-ambient: 0s; --dur-pulse: 0s; --dur-shimmer: 0s; }
+}
+
+/* ---- NOVA (hud, default) — clean blue circuit HUD ---- */
+[data-theme="nova"] {
+  --canvas-a: #050b16; --canvas-b: #0a1830; --canvas-c: #0e2340;
+  --scrim: rgba(4, 9, 18, 0.42);
+  --panel: rgba(10, 20, 38, 0.86); --panel-raised: rgba(15, 28, 50, 0.92); --inset: rgba(3, 7, 14, 0.92);
+  --border-hairline: rgba(120, 180, 255, 0.16);
+  --text-primary: #eaf3ff; --text-secondary: #a9c3e6; --text-muted: #6d84a8;
+  --accent: #3fd0ff; --accent-2: #6ee6ff; --glow: #3fd0ffaa;
+  --font-display: "Cascadia Code", "Consolas", ui-monospace, monospace;
+  --display-transform: uppercase; --display-tracking: 0.12em; --display-style: normal; --display-weight: 600;
+  --radius-mul: 0.6;
+  --canvas-image: url("/backgrounds/nova-astro-hud.png");
+}
+
+/* ---- NOVA skins (design-specs.md §4 "German (Das Deutsche Herz) -> skin of NOVA") ----
+   Imperator is ruled out for this skin (VM-exclusive, decision #1) — NOVA hosts it instead. */
+[data-theme="nova"][data-skin="german"] {
+  --accent: #ffce00; --accent-2: #dd0000; --glow: #ffce00aa;
+  --canvas-image: url("/backgrounds/nova-german-skin.png");
+}
+/* A second NOVA look (blue code/circuit corridor) — not one of the design doc's documented
+   skins, added as a 10th wallpaper option per Stefan's "10 clickable options" request. */
+[data-theme="nova"][data-skin="code"] {
+  --canvas-image: url("/backgrounds/nova-code-corridor.png");
+}
+
+/* ---- IMPERATOR (baroque) — Veselin Marinov gold cosmos, VM-exclusive (design-specs.md §4) ----
+   Ported from design/preview.html, the vetted token reference for all 5 themes. VM-exclusive:
+   no other background ever rides this theme (a real .jpg swap is a later asset task, not this
+   one — the canvas-layer gradient below is the same CSS-approximation stand-in every theme uses
+   until images/bg/*.jpg lands, per design-specs.md §8 decision 4). */
+[data-theme="imperator"] {
+  --canvas-a: #0e0904; --canvas-b: #241407; --canvas-c: #3a2308;
+  --scrim: rgba(10, 6, 2, 0.46);
+  --panel: rgba(28, 17, 6, 0.88); --panel-raised: rgba(38, 24, 9, 0.93); --inset: rgba(12, 7, 2, 0.94);
+  --border-hairline: rgba(230, 190, 110, 0.22);
+  --text-primary: #fbf1d9; --text-secondary: #dcbd84; --text-muted: #9a7f52;
+  --accent: #e7bb4c; --accent-2: #ffe08a; --glow: #e7bb4caa;
+  --font-display: Georgia, "Times New Roman", serif;
+  --display-transform: none; --display-tracking: 0.03em; --display-style: italic; --display-weight: 700;
+  --radius-mul: 1.4;
+  /* Default of 3 Veselin Marinov posters Stefan supplied (design/backgrounds/); the other 2 are
+     wired below as their own clickable wallpaper options (poster2/poster3 skins). */
+  --canvas-image: url("/backgrounds/imperator-vm-poster-1.png");
+}
+[data-theme="imperator"][data-skin="poster2"] {
+  --canvas-image: url("/backgrounds/imperator-vm-poster-2.png");
+}
+[data-theme="imperator"][data-skin="poster3"] {
+  --canvas-image: url("/backgrounds/imperator-vm-poster-3.png");
+}
+/* NOTE: an earlier iteration suppressed .logo-mark here (structure.showLogo: false, design-
+   specs.md §8 decision 2's "Imperator's art self-brands" reasoning). Stefan overrode that
+   explicitly for the logo specifically ("do not hide it") — the titlebar icon and the centered
+   watermark now show on every theme including Imperator. */
+
+/* ---- VEIL (arcane) — violet forbidden-knowledge portal ---- */
+[data-theme="veil"] {
+  --canvas-a: #0a0714; --canvas-b: #170e2c; --canvas-c: #251345;
+  --scrim: rgba(8, 5, 16, 0.44);
+  --panel: rgba(22, 13, 40, 0.87); --panel-raised: rgba(30, 18, 52, 0.92); --inset: rgba(9, 5, 17, 0.93);
+  --border-hairline: rgba(190, 140, 255, 0.2);
+  --text-primary: #ede4ff; --text-secondary: #bda3e8; --text-muted: #78649e;
+  --accent: #a76cf2; --accent-2: #d79bff; --glow: #a76cf2aa;
+  --font-display: "Palatino Linotype", Palatino, Georgia, serif;
+  --display-transform: none; --display-tracking: 0.06em; --display-style: normal; --display-weight: 600;
+  --radius-mul: 1.2;
+  /* VEIL's own default background (the "Veil of Isis" occult look, design-specs.md §4's own
+     description). The Islamic/Sufi skin below overrides this with its own image. */
+  --canvas-image: url("/backgrounds/veil-occult-isis-skin.png");
+}
+
+/* ---- VEIL skins (design-specs.md §4 "Skins documented from the art") ----
+   A skin inherits VEIL's structure/tokens and swaps only background+accent (per the design
+   doc's own skin model) — implemented here as a data attribute layered on top of the theme,
+   e.g. <div data-theme="veil" data-skin="islamic">. */
+[data-theme="veil"][data-skin="islamic"] {
+  --canvas-image: url("/backgrounds/veil-islamic-sufi-skin.png");
+}
+[data-theme="veil"][data-skin="occult"] {
+  --canvas-image: url("/backgrounds/veil-occult-isis-skin.png");
+}
+
+/* ---- FORGE (forged) — molten soul-forge, aggressive angular ---- */
+[data-theme="forge"] {
+  --canvas-a: #0c0402; --canvas-b: #260904; --canvas-c: #3d0f05;
+  --scrim: rgba(10, 3, 1, 0.4);
+  --panel: rgba(30, 9, 4, 0.87); --panel-raised: rgba(41, 13, 6, 0.93); --inset: rgba(12, 4, 2, 0.94);
+  --border-hairline: rgba(255, 120, 70, 0.24);
+  --text-primary: #fff1e8; --text-secondary: #f0ab8c; --text-muted: #a56a52;
+  --accent: #ff6a34; --accent-2: #ffa668; --glow: #ff6a34aa;
+  --font-display: "Arial Narrow", "Segoe UI", sans-serif;
+  --display-transform: uppercase; --display-tracking: 0.02em; --display-style: normal; --display-weight: 800;
+  --radius-mul: 0.3;
+  --canvas-image: url("/backgrounds/forge-molten-circuit.png");
+}
+
+/* ---- ENCHANT (astral) — cyan-magenta aurora + runic frame; home of the SGA display font ---- */
+[data-theme="enchant"] {
+  --canvas-a: #050f10; --canvas-b: #0a1c22; --canvas-c: #191038;
+  --scrim: rgba(4, 10, 12, 0.42);
+  --panel: rgba(10, 24, 30, 0.86); --panel-raised: rgba(14, 32, 40, 0.92); --inset: rgba(4, 10, 13, 0.93);
+  --border-hairline: rgba(120, 230, 220, 0.2);
+  --text-primary: #e4fffb; --text-secondary: #93dcd6; --text-muted: #5e8f8b;
+  --accent: #43e6cf; --accent-2: #d94ce0; --glow: #43e6cfaa;
+  --font-display: "Trebuchet MS", "Segoe UI", sans-serif;
+  --display-transform: uppercase; --display-tracking: 0.22em; --display-style: normal; --display-weight: 500;
+  --radius-mul: 1.0;
+  --canvas-image: url("/backgrounds/enchant-astral-phoenix.png");
+}
+/* ENCHANT is the SGA glyph font's conceptual "home" (design-specs.md §4 #5), but the actual
+   font-swap is already GLOBAL across every theme (see .window.lang-sga below, changelog 093) —
+   no Enchant-specific override needed here; this comment exists so a future reader doesn't
+   re-add one, expecting SGA to only apply on this theme. */
+
+/* ============================== THE APP WINDOW (fills the frameless OS window) ============================== */
+.window {
+  position: fixed; inset: 0;
+  overflow: hidden; isolation: isolate;
+  color: var(--text-primary); font-family: var(--font-body);
+  /* Belt-and-suspenders base fill, painted on .window itself (the true outermost box - always
+     exactly the OS window, no absolutely-positioned-child edge case can leave a gap in IT).
+     .canvas-layer (below) paints on top of this as the real backdrop; this is only the
+     guaranteed fallback so no region can ever show flat unpainted black. */
+  background-color: var(--canvas-a);
+  background-image: var(--canvas-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.canvas-layer {
+  position: absolute; inset: 0; z-index: 0;
+  /* --canvas-image (per theme, design/backgrounds/*) sits UNDER the same gradient stack every
+     theme already used as its CSS-approximation stand-in (design-specs.md §8 decision 4) — the
+     gradients now function as a color-matched wash over the real photo/art instead of being the
+     whole background, so legibility (R8/§6 contrast) and the ambient drift motion are unchanged
+     whether or not a theme has a real image yet. var(--canvas-image, none) means a theme/skin
+     with no image assigned falls back to gradient-only, exactly like before this change. */
+  background:
+    radial-gradient(120% 90% at 78% 8%, var(--canvas-c), transparent 60%),
+    radial-gradient(90% 70% at 15% 95%, var(--canvas-b), transparent 65%),
+    linear-gradient(160deg, color-mix(in srgb, var(--canvas-a) 30%, transparent), color-mix(in srgb, var(--canvas-b) 18%, transparent) 55%, color-mix(in srgb, var(--canvas-a) 30%, transparent)),
+    var(--canvas-image, none);
+  /* `100% 100%` (not `contain`/`cover`) on the image layer: stretches independently on each axis
+     to exactly fill the box, no aspect-ratio lock - Stefan: extend the window vertically only
+     and only the image's height should grow to match, same for horizontal-only, not scaled
+     uniformly (which is what contain/cover both do - they preserve the original proportions,
+     the opposite of what's wanted here). This always fills exactly (no letterbox, ever - same
+     benefit `cover` had) but distorts the art on a mismatched aspect ratio instead of cropping. */
+  background-size: auto, auto, auto, 100% 100%;
+  background-position: center, center, center, center;
+  background-repeat: no-repeat;
+  animation: drift var(--dur-ambient) ease-in-out infinite alternate;
+}
+/* Found while chasing Stefan's "center the image so it looks symmetrical": this animation runs
+   ALWAYS (infinite alternate), and a CSS animation's keyframe values fully override the
+   property's static value for the whole time it's running - so background-position was actually
+   drifting between "0 0" (the TOP-LEFT CORNER) and "2% -1%" the entire time, not around the
+   `center` the static rule three lines up implies. On a `contain`-sized image with a letterboxed
+   gap, anchoring near a corner instead of center dumps the whole gap onto one side instead of
+   splitting it evenly - exactly the asymmetry reported. Re-centered: both keyframes now sit near
+   50% 50%, drifting the same ~2%/1% distance the design intended, just around center instead of
+   from a corner. */
+@keyframes drift {
+  from { filter: brightness(1) saturate(1); background-position: 50% 50%; }
+  to   { filter: brightness(1.08) saturate(1.15); background-position: 52% 49%; }
+}
+.canvas-layer canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.55; }
+.scrim-layer { position: absolute; inset: 0; z-index: 1; background: var(--scrim); }
+/* Centered logo watermark (design/logo.png) over every wallpaper EXCEPT Imperator — Imperator's
+   art self-brands (Veselin Marinov's own face/name), same "no double branding" reasoning as the
+   existing .logo-mark suppression (design-specs.md §8 decision 2). Sits above the scrim so it
+   stays visible over any background, but below .content/panels so it never competes with real
+   UI or blocks clicks (pointer-events: none). */
+.logo-watermark {
+  /* Default position: horizontally centered in the HEADER area (top of the window, under the
+     titlebar) - Stefan's latest split: absolute-center is now ONLY for the coding wallpaper
+     (override below); every other non-Imperator theme goes back to this header position.
+     right:0 (was constrained to rightcol's own track width) - Stefan: "move the logo righter" -
+     centers it across the FULL window instead of just the leftcol "canvas", which reads as
+     properly centered rather than shifted toward the left edge. Safe to widen back out at this
+     smaller 44vh size (the coding variant below, 66vh, keeps its own tighter constraint - that
+     one's big enough to risk painting over .rightcol's controls, this one isn't). */
+  position: absolute; top: 0; height: 44vh; min-height: 14rem; max-height: 28rem;
+  left: 0; right: 0; z-index: 2.5; pointer-events: none;
+  /* `contain` (not a fixed-width value) guarantees the WHOLE logo always fits inside this box's
+     own height regardless of the PNG's aspect ratio — a bare width value (the previous
+     min(68%, 32.5rem) auto) let the auto-computed height exceed the 26vh box, so the bottom of the
+     logo was clipped right where .hero-space ends and .panels' opaque background begins
+     (Stefan's screenshot: "logo seems to be behind some box and appear cut"). */
+  background: url("/logo/logo.png") center center / contain no-repeat;
+  opacity: 1;
+  filter: brightness(1.25) drop-shadow(0 0 1.125rem var(--glow));
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+/* Coding wallpaper (nova/code skin) ONLY: horizontal center + a bit above true vertical center
+   (top:44%, was 50% - Stefan: "move the logo a bit upwards"), 1.5x the default size. */
+[data-theme="nova"][data-skin="code"] .logo-watermark {
+  top: 44%; height: 66vh; min-height: 21rem; max-height: 42rem;
+  transform: translateY(-50%);
+}
+/* Hidden on IMPERATOR ONLY — its Veselin Marinov art self-brands (own name/face), so the DPS-NN
+   watermark would double up on top of it (design-specs.md §8 decision 2's same reasoning). Every
+   other theme still shows it at full visibility per the earlier "do not hide it" instruction —
+   that was about not suppressing the logo everywhere, not an exception for VM specifically. */
+[data-theme="imperator"] .logo-watermark { display: none; }
+/* FORGE gets its own themed watermark art (logo-hell.png, Stefan's upload) instead of the shared
+   logo.png - "the nether template" (FORGE is the molten/infernal theme, the closest match to
+   that description among the five). */
+[data-theme="forge"] .logo-watermark { background-image: url("/logo/logo-hell.png"); }
+/* Grid layout, confirmed against a live layout simulation before porting here (see changelog):
+   titlebar spans the top, footer spans the bottom, and the middle row is TWO columns — a left
+   column (debug terminal; empty/background shows through when Debug is off — this IS the
+   reserved space the old .hero-space band used to carve out, now structural instead of a
+   guessed vh value) and a right column (toolbar + panels + run controls + progress, packed
+   top-aligned, `overflow: hidden` — it must always fit in view, never scroll). Grid rows/columns
+   guarantee non-overlap by construction, unlike the earlier hand-placed absolute positioning. */
+.content {
+  position: relative; z-index: 2; height: 100%; min-height: 0; overflow: hidden;
+  display: grid;
+  /* rightcol's track: 34%/26.25rem -> 24rem/40% (too narrow for its scaled-up content, clipped)
+     -> 21rem/36% -> settled here. This is the column's OWN outer width; the single-grid rework
+     inside .rightcol (below) is a separate concern - guaranteeing every control fills exactly
+     THIS width consistently, not another narrowing pass on the column itself. */
+  grid-template-columns: 1fr min(21rem, 36%);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas: "titlebar titlebar" "leftcol rightcol" "footer footer";
+  gap: 0.5rem;
+}
+.frame-ornament {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--border-hairline), inset 0 0 2.5rem -0.625rem var(--glow);
+}
+.corner {
+  position: absolute; z-index: 3; pointer-events: none;
+  color: var(--accent); opacity: 0.75; font-size: 0.9375rem; line-height: 1;
+  text-shadow: 0 0 0.5rem var(--glow);
+}
+.corner.tl { top: 0.5rem; left: 0.5rem; }
+.corner.bl { bottom: 0.5rem; left: 0.5rem; transform: scaleY(-1); }
+
+/* ---- title bar (real DOM chrome — R6) ---- */
+.titlebar {
+  grid-area: titlebar; position: relative; z-index: 4;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.5rem 0.625rem 0.5rem 0.75rem;
+  -webkit-app-region: drag;
+}
+.brand { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.logo-mark {
+  /* icon.png (Stefan's own icon, not logo.png/the laurel watermark) - the titlebar's small
+     corner icon specifically, separate from .logo-watermark below (which stays logo.png). */
+  width: 1.375rem; height: 1.375rem; flex: none;
+  background: url("/logo/icon.png") center center / contain no-repeat;
+}
+/* "ДПС-НН Щаб" / "HQ" callsign badge (Stefan) - the titlebar's full-title text stayed removed
+   (it lives on the Settings button now), so this is a SHORT, deliberately understated label, not
+   a second heading. Uses each theme's own display font/tracking/transform (same tokens the
+   footer and run buttons already read off) so it reads as in-family chrome on every wallpaper,
+   not one fixed style clashing with the theme. */
+.hq-badge {
+  /* font-size bumped to --scale-title (was --scale-caption, the smallest token in the scale) -
+     Stefan: "make this title bigger at all". opacity raised to fully readable too, now that it's
+     meant to read as a real (if small) label rather than a faint accent mark. */
+  font-family: var(--font-display); text-transform: var(--display-transform);
+  letter-spacing: calc(var(--display-tracking) + 0.05em); font-style: var(--display-style);
+  font-weight: var(--display-weight); font-size: var(--scale-title); color: var(--accent);
+  text-shadow: 0 0 0.5rem var(--glow); white-space: nowrap; opacity: 1;
+}
+.win-controls { display: flex; gap: 0.375rem; -webkit-app-region: no-drag; }
+.win-controls button {
+  appearance: none; border: 1px solid var(--border-hairline);
+  background: var(--panel-raised); color: var(--text-secondary);
+  width: 1.75rem; height: 1.5rem; border-radius: 0.25rem; cursor: pointer;
+  font-size: 0.6875rem; display: grid; place-items: center;
+  transition: box-shadow var(--dur-transition), color var(--dur-transition);
+}
+.win-controls button:hover { color: var(--text-primary); box-shadow: 0 0 0 1px var(--accent), 0 0 0.625rem var(--glow); }
+.win-controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.win-controls .close:hover { color: #fff; box-shadow: 0 0 0 1px var(--state-stop), 0 0 0.625rem var(--state-stop); }
+
+/* ---- left column: just the poster art/logo showing through now - progress+run-controls moved
+   to .rightcol, below the toolbar (Stefan). Empty on purpose. */
+.leftcol {
+  grid-area: leftcol; min-height: 0; min-width: 0;
+}
+
+/* ---- right column: ONE grid, ONE column track - EVERY control (toolbar chips, progress bar,
+   run buttons) is a genuine direct (or display:contents-promoted) child of THIS single grid, so
+   they all get the literal same column width by construction. This replaces the old scheme
+   (.rightcol flex column -> .toolbar its OWN flex column -> .run-row-wrap -> .run-row its OWN
+   grid), which had chips, progress, and buttons each going through a DIFFERENT nested container
+   with its OWN independent width computation - three separate systems that all had to happen to
+   agree, instead of one. That's what kept letting them drift (a specificity bug, a display:block
+   losing `gap`, etc. - each a real, different bug, but all downstream of "too many independent
+   layout contexts trying to converge on the same number" per Stefan's own diagnosis). Now there
+   is exactly one width authority. */
+.rightcol {
+  grid-area: rightcol; min-height: 0; min-width: 0;
+  display: grid; grid-template-columns: 1fr; row-gap: 0.5rem; justify-content: flex-start;
+  align-content: start;
+  padding: 0.5rem 0.75rem 0; overflow: hidden;
+  /* Confirmed by simulation: this column must always fit in view. If content ever doesn't fit,
+     that's a sizing bug to fix here — not something to hide behind a scrollbar (only the
+     terminal popup's own log area is allowed to scroll). */
+}
+/* display:contents makes .toolbar/.run-row-wrap's OWN box disappear from layout entirely - their
+   children become direct items of .rightcol's grid (the single 1fr column) instead of being
+   sized relative to an intermediate container. Semantic/JS structure (ids, event listeners)
+   is untouched - this is a pure layout-tree change, the DOM itself doesn't move. */
+.toolbar { display: contents; }
+.run-row-wrap { display: contents; }
+/* REAL BUG found here: grid items default to align-self:stretch on BOTH axes, not just the
+   inline (width) one - the width:100% fix worked, but every item ALSO stretched vertically to
+   fill its own auto-sized row track, which (with .rightcol having spare height while idle/
+   collapsed rows exist elsewhere) made some rows balloon to wildly different heights ("not same
+   shape"). align-self:start opts out of the vertical half entirely - height is governed ONLY by
+   each item's own content from here on, never stretched. Width is now 50% (was 100%) and
+   right-aligned (margin-left:auto) - Stefan: "make them smaller, half their width". */
+.toolbar > .chip, .toolbar > .music-picker {
+  width: 50%; margin-left: auto; box-sizing: border-box; align-self: start;
+}
+/* .run-row itself stays 100% (it's an invisible layout wrapper, no border/background of its
+   own - width only matters for what's visibly inside it) - align-self:start still applies so
+   IT doesn't get vertically stretched either. The buttons inside get their own explicit 50%
+   directly (below), one clear number instead of a 50%-of-50% compounding through two nested
+   percentages, which is simpler to reason about and to verify. */
+.run-row-wrap > .run-row { width: 100%; box-sizing: border-box; align-self: start; }
+.chip {
+  border: 1px solid var(--border-hairline); background: var(--panel);
+  /* Padding trimmed again (was 0.5rem 0.625rem) alongside the halved width - Stefan: "make them
+     smaller" (on top of the width halving, a smaller footprint overall). */
+  border-radius: var(--radius-pill); padding: 0.375rem 0.5rem;
+  text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.6875rem; color: var(--text-secondary);
+  box-sizing: border-box;
+}
+button.chip { cursor: pointer; }
+button.chip:hover { color: var(--text-primary); box-shadow: 0 0 0 1px var(--accent); }
+.debug-toggle { display: flex; align-items: center; gap: 0.375rem; cursor: pointer; user-select: none; }
+.debug-toggle input { accent-color: var(--accent); }
+/* .music-toggle (the visible button) fills its guaranteed-width .music-picker parent. */
+.music-picker > .music-toggle { width: 100%; box-sizing: border-box; }
+
+/* ---- (removed) reserved hero band — .leftcol's own grid area now reserves that space
+   structurally (the terminal's column), instead of a guessed vh value on a separate element. */
+
+/* ---- input panels (Specification above Seed) ---- */
+.panels {
+  display: grid; grid-template-columns: 1fr; gap: 0.625rem;
+}
+.panels[hidden] { display: none; }
+.panel {
+  background: var(--panel); border: 1px solid var(--border-hairline);
+  border-radius: calc(var(--radius-panel) * var(--radius-mul) * 0.6 + 0.25rem);
+  padding: 0.625rem 0.75rem; box-shadow: 0 0.375rem 1.125rem -0.625rem rgba(0,0,0,0.6);
+}
+.panel h3 {
+  margin: 0 0 0.5rem; font-size: var(--scale-label);
+  text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-secondary); font-weight: 600;
+  display: flex; align-items: center; gap: 0.375rem;
+}
+.panel h3::before {
+  content: ""; width: 0.375rem; height: 0.375rem; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0.5rem var(--glow);
+}
+.well {
+  background: var(--inset); border: 1px dashed var(--border-hairline); border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem; font-size: var(--scale-mono); font-family: var(--font-technical);
+  color: var(--text-muted); margin-bottom: 0.375rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* flex-wrap so a narrow seed panel (select + Upload + Claude) drops the Claude button to its
+   own line instead of clipping it off the edge — the same overflow class as the toolbar fix. */
+.select-row { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+/* flex-basis:12rem (was flex:1 with no basis) - Stefan: Spec's select (2 siblings: itself +
+   Upload) and Seed's select (3 siblings: + Claude) were landing at different widths purely
+   because they had different NUMBERS of siblings competing for the same row, not because they
+   were meant to differ. A shared basis makes both target the same size regardless of how many
+   buttons share their row; still grows to fill spare room (flex-grow:1) and still shrinks/wraps
+   under real pressure (flex-shrink:1, min-width:0, .select-row's own flex-wrap). */
+select {
+  flex: 1 1 12rem; min-width: 0; background: var(--inset); color: var(--text-primary);
+  border: 1px solid var(--border-hairline); border-radius: 0.375rem; padding: 0.3125rem 0.375rem; font-size: var(--scale-mono);
+}
+.claude-btn {
+  /* flex:1 1 100% (was flex-shrink:0 with no basis/grow) - Stefan: "make the claude btn wide as
+     the box". When it wraps onto its own line (the common case: select+Upload already filled the
+     first line), a 100% flex-basis makes it claim the WHOLE row instead of just its own text
+     width - still shrinks (flex-shrink:1 default) to share a line normally if there's room. */
+  flex: 1 1 100%;
+  border: 1px solid var(--accent-2); background: transparent; color: var(--accent-2);
+  border-radius: 0.375rem; padding: 0.3125rem 0.625rem; font-size: var(--scale-mono); cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-transition);
+}
+.claude-btn:hover:not([disabled]) { background: color-mix(in srgb, var(--accent-2) 16%, transparent); }
+.upload-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--border-hairline); background: var(--panel-raised); color: var(--text-secondary);
+  border-radius: 0.375rem; padding: 0.3125rem 0.625rem; font-size: var(--scale-mono); cursor: pointer; white-space: nowrap;
+}
+.upload-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* ---- run controls (R2 — colors NEVER from theme tokens) ---- */
+/* Back in the narrow ~24rem/40%-of-window .rightcol now (moved from the wide .leftcol - Stefan:
+   "move the control buttons... below these if it will fit"). flex-wrap:wrap + each button's own
+   min-width means up to 4 fit per row on a wide window, gracefully dropping to 2x2 (or even
+   1-per-row) when the column's actually this narrow, instead of squeezing button text unreadably
+   thin. Pause/Resume/Stop are only IN THE DOM's visible flow while a run is actually generating
+   (main.ts setRunState toggles [hidden] on them, mirroring .progress-wrap) - Stefan: don't show
+   controls for actions that aren't currently possible. */
+/* width:100% made EXPLICIT at every level (was relying on flex default align-items:stretch
+   inheriting all the way down from .rightcol) - belt-and-suspenders after repeated reports of
+   this row landing narrower than the toolbar chips above it. */
+.run-row-wrap { flex: none; width: 100%; box-sizing: border-box; }
+/* CSS Grid (auto-fit+minmax) for the MULTI-button case (Pause+Resume+Stop while generating) -
+   splits N buttons evenly, each never below 7rem. gap widened (was 0.5rem) - Stefan: buttons
+   read as "stuck together". */
+/* Single column (was repeat(auto-fit, minmax(7rem,1fr)), which put Pause+Resume side by side
+   whenever there was room) - Stefan: "order the btns vertically". Every visible .run-btn now
+   stacks one per row regardless of how many are showing or how wide the column is. */
+.run-row { display: grid; grid-template-columns: 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box; }
+/* .single (main.ts setRunState toggles this - only Start is visible, idle/done/error/stopped):
+   drop grid/auto-fit ENTIRELY and force a flat width:100% block. Reported narrower than the
+   toolbar chips above it multiple times running auto-fit/flex-grow, despite both being
+   textbook-correct for "one item fills its row" - this sidesteps the mechanism entirely: a
+   JS-driven class + a single unambiguous width:100% rule, no distribution math involved.
+   display:flex (not block, the first version of this fix) - `gap` is a flex/grid-only property;
+   block layout silently ignores it, which is why Pause/Resume/Stop had zero space between them
+   once this rule made them visible (see the :not([hidden]) note right below for WHY they were
+   visible in the first place - that was the real bug, this display:block->flex is a second, real
+   but separate one this surfaced). */
+.run-row.single { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
+/* TWO real bugs traced to this one selector, found only by checking actual specificity math
+   instead of guessing again: (1) `.run-row.single .run-btn` (3 classes, specificity 0,3,0) beat
+   `.run-btn[hidden] { display:none }` (1 class + 1 attribute, 0,2,0) OUTRIGHT regardless of
+   source order, because 0,3,0 > 0,2,0 - so EVERY .run-btn (Pause/Resume/Stop included, despite
+   their [hidden] attribute) got forced to display:flex the moment .single was active. That's
+   "why all buttons displayed at once." :not([hidden]) fixes it structurally: this rule now
+   simply doesn't match a hidden button at all, so there's no competing declaration to win. */
+/* width:50% directly (was 100% of an already-halved .run-row ancestor - one clear number now
+   instead of a compounding percentage through two nested levels) - Stefan asked for the Start
+   button specifically halved again after a screenshot where it still read full-width. Scoped to
+   .run-row (not .run-row.single) - Stefan: "for the 3 btns apply the same fix" - Pause/Resume/
+   Stop (the multi-button, non-.single case) needed the exact same halving, they just hadn't
+   gotten it yet since the earlier fix only targeted the single-button selector. */
+.run-row .run-btn:not([hidden]) { width: 50%; margin-left: auto; box-sizing: border-box; }
+.run-btn {
+  border-radius: var(--radius-control); border: 1px solid var(--btn-c);
+  background: color-mix(in srgb, var(--btn-c) 14%, var(--panel)); color: #fff;
+  padding: 0.625rem 0.375rem; font-size: var(--scale-body); font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 0.375rem; min-height: 2.5rem;
+  transition: box-shadow var(--dur-transition), transform var(--dur-transition);
+}
+.run-btn[hidden] { display: none; }
+.run-btn:hover:not([disabled]) { box-shadow: 0 0 1rem -2px var(--btn-c); transform: translateY(-1px); }
+.run-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.run-btn.start { --btn-c: var(--state-start); }
+.run-btn.pause { --btn-c: var(--state-pause); }
+.run-btn.resume { --btn-c: var(--state-resume); }
+.run-btn.stop { --btn-c: var(--state-stop); }
+.run-btn[disabled] { opacity: 0.35; cursor: not-allowed; box-shadow: none; transform: none; }
+.run-btn.active { animation: pulse var(--dur-pulse) ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0.625rem -2px var(--btn-c); }
+  50% { box-shadow: 0 0 1.375rem 2px var(--btn-c); }
+}
+
+/* ---- progress ---- */
+/* Hidden entirely while nothing is generating - see .run-row-wrap[data-generating] below, same
+   condition, one JS toggle in main.ts's setRunState. .leftcol's own justify-content:center
+   (above) handles keeping the remaining content balanced, no separate pinning needed here. */
+/* Same treatment as the chips/run-row above: half width, right-aligned, align-self:start so it
+   can't be stretched vertically by the grid either. */
+.progress-wrap { width: 50%; margin-left: auto; box-sizing: border-box; align-self: start; }
+.progress-wrap[hidden] { display: none; }
+.progress-label {
+  display: flex; justify-content: space-between; font-size: var(--scale-caption);
+  color: var(--text-secondary); margin-bottom: 0.3125rem; font-family: var(--font-technical);
+  font-variant-numeric: tabular-nums;
+}
+.progress-track {
+  height: 0.5rem; border-radius: var(--radius-pill); background: var(--inset);
+  overflow: hidden; border: 1px solid var(--border-hairline);
+}
+.progress-fill {
+  height: 100%; width: 0%; border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 0.625rem var(--glow); background-size: 200% 100%;
+  transition: width var(--dur-transition) ease-out;
+}
+.progress-fill.running { animation: shimmer var(--dur-shimmer) linear infinite; }
+.progress-fill.success { background: var(--state-start); box-shadow: 0 0 0.625rem var(--state-start-glow); animation: none; }
+.progress-fill.error { background: var(--state-stop); box-shadow: 0 0 0.625rem var(--state-stop-glow); animation: none; }
+@keyframes shimmer { from { background-position: 0% 0; } to { background-position: -200% 0; } }
+
+/* ---- debug terminal (xterm host) ---- */
+/* Lives inside the closable .terminal-dialog popup now (Stefan), not inline in .leftcol - fills
+   whatever height that dialog gives it instead of a fixed rem value. */
+.terminal-wrap {
+  flex: 1; min-height: 0; padding: 0.5rem 0 0; display: flex; flex-direction: column;
+}
+.terminal {
+  flex: 1; min-height: 0; background: var(--inset);
+  border: 1px solid var(--border-hairline); border-radius: 0.375rem; padding: 0.375rem 0.5rem;
+}
+.terminal .xterm { height: 100%; }
+
+/* ---- debug terminal popup (Stefan: closable, so it never permanently eats layout space) ----
+   Overrides .sheet-backdrop's default (slide-in from the right, narrow) with a centered, large
+   dialog - a log viewer needs real width/height, not a narrow side-sheet. */
+.terminal-backdrop { justify-content: center; align-items: center; padding: 1.5rem; }
+.terminal-dialog {
+  width: min(56rem, 100%); height: min(34rem, 85vh);
+  min-width: 24rem; min-height: 14rem; max-width: 95vw; max-height: 92vh;
+  border-left: 0; border: 1px solid var(--border-hairline);
+  border-radius: calc(0.625rem * var(--radius-mul) * 0.7 + 0.25rem);
+  box-shadow: 0 1.5rem 3.75rem -1rem rgba(0,0,0,0.75), 0 0 2.5rem -1.125rem var(--glow);
+  /* Stefan: an option to make the debug window wider - native CSS resize gives a drag handle
+     on the bottom-right corner, no extra JS needed. overflow:auto (required for `resize` to take
+     effect at all) is harmless here since .terminal-wrap already manages its own inner scrolling. */
+  resize: both; overflow: auto;
+}
+/* Explicit Maximize/Restore button (Stefan: "like a window") - toggled in main.ts. !important on
+   the two dimensions overrides an in-progress manual `resize: both` drag (an inline width/height
+   the browser sets on the element itself, which otherwise wins over any stylesheet rule). */
+.terminal-dialog.maximized { width: 95vw !important; height: 92vh !important; }
+.terminal-dialog-controls { display: flex; gap: 0.375rem; }
+#terminal-maximize {
+  border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 12px;
+  line-height: 1; padding: 2px;
+}
+#terminal-maximize:hover { color: var(--text-primary); }
+
+/* ---- footer ---- */
+.footer {
+  /* THE REAL BUG (found only now, after 3 rounds of guessing at centering CSS): this rule never
+     actually had `grid-area: footer` - so .content's grid never placed this element into the
+     named "footer" row spanning both columns. It fell back to plain CSS Grid auto-placement,
+     landing in the first free 1x1 cell (the LEFT column's row), which is why text-align:center
+     only ever centered it within the left half of the window - it never had the right half to
+     center across in the first place. Every previous "centering" attempt was correctly centering
+     an incorrectly-placed box. */
+  grid-area: footer;
+  position: relative; z-index: 4; padding: 0.375rem 0 0.625rem;
+  width: 100%; box-sizing: border-box; margin: 0 auto;
+  /* A distinctive display face (matches the theme's OWN display font, so it stays in-family
+     across NOVA/VEIL/FORGE/ENCHANT rather than one fixed font clashing with every theme) instead
+     of the plain technical-mono body copy used everywhere else — makes the footer read as its
+     own designed element, not leftover debug text. */
+  font-family: var(--font-display); text-transform: var(--display-transform);
+  letter-spacing: var(--display-tracking); font-weight: var(--display-weight);
+  font-size: var(--scale-body); color: var(--text-secondary);
+  text-shadow: 0 0 0.625rem var(--glow);
+  white-space: pre-wrap; text-align: center; line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+/* ---- duplicate dialog (overlay) ---- */
+.dialog-backdrop {
+  position: absolute; inset: 0; z-index: 7; background: rgba(2,3,6,0.66);
+  display: none; align-items: center; justify-content: center; padding: 1.25rem;
+}
+.dialog-backdrop[data-open="true"] { display: flex; }
+.dialog {
+  width: min(23.75rem, 100%); background: var(--panel-raised); border: 1px solid var(--border-hairline);
+  border-radius: calc(0.625rem * var(--radius-mul) * 0.7 + 0.1875rem); padding: 1rem;
+  box-shadow: 0 1.25rem 3.125rem -0.75rem rgba(0,0,0,0.7), 0 0 1.875rem -0.875rem var(--glow);
+}
+.dialog h4 {
+  margin: 0 0 0.25rem; font-family: var(--font-display); text-transform: var(--display-transform);
+  letter-spacing: var(--display-tracking); font-weight: var(--display-weight);
+  font-size: var(--scale-heading); color: var(--text-primary);
+}
+.dialog .lead { font-size: var(--scale-caption); color: var(--text-muted); margin: 0 0 0.75rem; }
+.dialog dl { margin: 0 0 0.875rem; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.625rem; }
+.dialog dt { font-size: var(--scale-caption); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); white-space: nowrap; }
+.dialog dd { margin: 0; font-size: var(--scale-mono); font-family: var(--font-technical); color: var(--text-secondary); overflow-wrap: anywhere; }
+.dialog-actions { display: flex; flex-direction: column; gap: 0.375rem; }
+.dialog-btn { border-radius: var(--radius-control); padding: 0.5rem 0.625rem; font-size: var(--scale-body); cursor: pointer; text-align: center; transition: box-shadow var(--dur-transition), background var(--dur-transition); }
+.dialog-btn.primary { border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--panel)); color: var(--text-primary); font-weight: 600; }
+.dialog-btn.primary:hover { box-shadow: 0 0 1rem -2px var(--glow); }
+.dialog-btn.warning { border: 1px solid var(--state-warning); background: color-mix(in srgb, var(--state-warning) 14%, var(--panel)); color: #fff2e2; }
+.dialog-btn.warning:hover { box-shadow: 0 0 1rem -0.25rem var(--state-warning-glow); }
+.dialog-btn.plain { border: 1px solid transparent; background: transparent; color: var(--text-muted); padding: 0.375rem 0.625rem; }
+.dialog-btn.plain:hover { color: var(--text-secondary); }
+.dialog-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- full-bleed result screens (report / error) ---- */
+.result-screen {
+  position: absolute; inset: 0; z-index: 6;
+  display: none; align-items: center; justify-content: center; padding: 1.25rem;
+  background: var(--scrim); backdrop-filter: blur(2px);
+}
+.result-screen[data-open="true"] { display: flex; }
+
+.readout {
+  width: min(28.75rem, 100%); background: var(--panel-raised); border: 1px solid var(--border-hairline);
+  border-radius: calc(0.625rem * var(--radius-mul) * 0.7 + 0.25rem); padding: 1.125rem;
+  box-shadow: 0 1.5rem 3.75rem -1rem rgba(0,0,0,0.75), 0 0 2.5rem -1.125rem var(--glow);
+}
+.readout-head {
+  display: flex; align-items: center; gap: 0.5625rem; margin-bottom: 0.875rem;
+  font-family: var(--font-display); text-transform: var(--display-transform);
+  letter-spacing: var(--display-tracking); font-weight: var(--display-weight); font-size: var(--scale-heading);
+}
+.readout-head .badge { width: 1.375rem; height: 1.375rem; border-radius: 50%; display: grid; place-items: center; font-size: 0.75rem; flex: none; }
+.readout.ok .badge { background: var(--state-start); color: #051108; box-shadow: 0 0 0.75rem var(--state-start-glow); }
+.readout.ok .readout-head { color: var(--state-start-glow); }
+.readout.err .badge { background: var(--state-stop); color: #fff; box-shadow: 0 0 0.75rem var(--state-stop-glow); }
+.readout.err .readout-head { color: var(--state-stop-glow); }
+.readout dl { display: grid; grid-template-columns: auto 1fr; gap: 0.4375rem 0.75rem; margin: 0 0 0.875rem; }
+.readout dt { font-size: var(--scale-caption); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); white-space: nowrap; }
+.readout dd { margin: 0; }
+.copyfield {
+  display: flex; align-items: center; gap: 0.375rem; background: var(--inset);
+  border: 1px solid var(--border-hairline); border-radius: 0.3125rem; padding: 0.1875rem 0.25rem 0.1875rem 0.5rem;
+  font-family: var(--font-technical); font-size: var(--scale-mono); color: var(--text-secondary); font-variant-numeric: tabular-nums;
+}
+.copyfield code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copyfield button { border: 1px solid var(--border-hairline); background: var(--panel); color: var(--text-muted); border-radius: 0.25rem; padding: 1px 0.375rem; font-size: 0.625rem; cursor: pointer; flex: none; }
+.copyfield button:hover { color: var(--accent); border-color: var(--accent); }
+.readout .err-cause {
+  background: var(--inset); border-left: 2px solid var(--state-stop); border-radius: 0.25rem;
+  padding: 0.4375rem 0.625rem; font-family: var(--font-technical); font-size: var(--scale-mono);
+  color: var(--text-secondary); margin: 0 0 0.875rem; line-height: 1.5; max-height: 10rem; overflow: auto; white-space: pre-wrap;
+}
+.readout-actions { display: flex; flex-wrap: wrap; gap: 0.4375rem; }
+.btn {
+  border-radius: var(--radius-control); padding: 0.5rem 0.75rem; font-size: var(--scale-body); cursor: pointer;
+  border: 1px solid var(--border-hairline); background: var(--panel); color: var(--text-secondary);
+  transition: box-shadow var(--dur-transition), color var(--dur-transition), border-color var(--dur-transition);
+}
+.btn:hover { color: var(--text-primary); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.primary { border-color: var(--accent); color: var(--text-primary); background: color-mix(in srgb, var(--accent) 16%, var(--panel)); font-weight: 600; }
+.btn.primary:hover { box-shadow: 0 0 1rem -0.1875rem var(--glow); }
+.btn.danger { border-color: var(--state-stop); color: #ffdfe2; background: color-mix(in srgb, var(--state-stop) 14%, var(--panel)); }
+
+/* ---- settings sheet ---- */
+.sheet-backdrop { position: absolute; inset: 0; z-index: 7; background: rgba(2,3,6,0.6); display: none; justify-content: flex-end; }
+.sheet-backdrop[data-open="true"] { display: flex; }
+.sheet {
+  width: min(22.5rem, 90%); height: 100%; overflow-y: auto;
+  background: var(--panel-raised); border-left: 1px solid var(--border-hairline);
+  box-shadow: -1.25rem 0 3.125rem -1.25rem rgba(0,0,0,0.7); padding: 0.875rem; display: flex; flex-direction: column; gap: 0.75rem;
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.sheet-head h4 { margin: 0; font-family: var(--font-display); text-transform: var(--display-transform); letter-spacing: var(--display-tracking); font-weight: var(--display-weight); font-size: var(--scale-heading); color: var(--text-primary); }
+.sheet-head button { border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.875rem; }
+.sheet-head button:hover { color: var(--text-primary); }
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+/* Two toolbar-chip-style controls side by side (Language+Wallpaper, Debug+Recent-projects) -
+   these kept their original .chip/.lang-picker/.theme-picker styling when they moved into
+   Settings from the toolbar, this just lays the PAIRS out horizontally instead of the toolbar's
+   full-width stack. */
+.settings-quick-row { flex-direction: row; gap: 0.5rem; }
+.settings-quick-row > * { flex: 1; min-width: 0; }
+.settings-quick-row .theme-toggle, .settings-quick-row .lang-toggle,
+.settings-quick-row .chip, .settings-quick-row .debug-toggle { width: 100%; justify-content: center; }
+.field label { font-size: var(--scale-label); text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-secondary); }
+.field .hint { font-size: var(--scale-caption); color: var(--text-muted); line-height: 1.4; }
+.field input { background: var(--inset); border: 1px solid var(--border-hairline); border-radius: 0.375rem; padding: 0.4375rem 0.5625rem; color: var(--text-primary); font-family: var(--font-technical); font-size: var(--scale-mono); }
+.field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Agent-mode description box (ADR-013): same tokens as .field input, sized for prose. */
+#spec-describe { width: 100%; box-sizing: border-box; resize: vertical; min-height: 4.5rem; margin-top: 0.5rem; background: var(--inset); border: 1px solid var(--border-hairline); border-radius: 0.375rem; padding: 0.4375rem 0.5625rem; color: var(--text-primary); font-family: var(--font-technical); font-size: var(--scale-mono); }
+#spec-describe:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.key-state { font-size: var(--scale-caption); color: var(--state-start); }
+.key-state.unset { color: var(--state-warning); }
+
+/* ---- recent projects sheet ---- */
+.recent-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.recent-empty { color: var(--text-muted); font-size: var(--scale-body); padding: 0.5rem 0; }
+.recent-item {
+  background: var(--panel); border: 1px solid var(--border-hairline); border-radius: var(--radius-panel);
+  padding: 0.625rem; display: flex; flex-direction: column; gap: 0.25rem;
+}
+.recent-item .rp-name {
+  font-family: var(--font-display); text-transform: var(--display-transform); letter-spacing: var(--display-tracking);
+  font-weight: var(--display-weight); font-size: var(--scale-body); color: var(--text-primary);
+}
+.recent-item .rp-meta { font-size: var(--scale-caption); color: var(--text-muted); }
+.recent-item .rp-open {
+  align-self: flex-start; margin-top: 2px; background: transparent; border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-control); color: var(--text-secondary); padding: 0.25rem 0.5625rem; cursor: pointer;
+  font-size: var(--scale-caption);
+}
+.recent-item .rp-open:hover { color: var(--text-primary); box-shadow: 0 0 0 1px var(--accent); }
+
+/* ---- toasts ---- */
+/* ---- music player bar (seek bar - Stefan: "add player to be able to go to specific time") ----
+   Lives inside .music-dialog-body now (not an absolute floating bar over the whole window) - the
+   popup itself is the "expand it like the terminal to watch the video" surface Stefan asked for,
+   so #music-video just grows with the resizable/maximizable dialog around it. */
+.music-player-bar {
+  flex: none; background: var(--panel-raised); border: 1px solid var(--border-hairline);
+  border-radius: 0.5rem; padding: 0.5rem 0.75rem; display: flex; flex-direction: column; gap: 0.4375rem;
+}
+.music-player-bar[hidden] { display: none; }
+#music-video { width: 100%; max-height: 50vh; border-radius: 0.375rem; display: block; }
+#music-video[hidden] { display: none; }
+.music-now-playing {
+  font-size: var(--scale-caption); color: var(--text-secondary); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.music-seek-row { display: flex; align-items: center; gap: 0.5rem; }
+.music-time {
+  font-family: var(--font-technical); font-size: var(--scale-caption); color: var(--text-secondary);
+  font-variant-numeric: tabular-nums; flex: none;
+}
+#music-seek { flex: 1; accent-color: var(--accent); cursor: pointer; }
+.music-transport { display: flex; gap: 0.5rem; }
+#music-playpause { min-width: 2.5rem; }
+
+.toast-stack { position: absolute; z-index: 8; right: 0.75rem; bottom: 0.75rem; display: flex; flex-direction: column-reverse; gap: 0.5rem; max-width: min(20rem, 70%); pointer-events: none; }
+.toast {
+  pointer-events: auto; position: relative; overflow: hidden;
+  background: var(--panel-raised); border: 1px solid var(--border-hairline); border-radius: 0.5rem;
+  padding: 0.5625rem 1.875rem 0.625rem 0.75rem; box-shadow: 0 0.625rem 1.625rem -0.625rem rgba(0,0,0,0.7);
+  display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; align-items: start;
+  animation: toast-in var(--dur-transition) ease-out;
+}
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+@keyframes toast-in { from { transform: translateY(0.5rem); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast .tdot { width: 0.5625rem; height: 0.5625rem; border-radius: 50%; margin-top: 0.25rem; background: var(--tc); box-shadow: 0 0 0.5rem var(--tc); }
+.toast .tmsg { font-size: var(--scale-body); color: var(--text-primary); line-height: 1.3; }
+.toast .tsub { font-size: var(--scale-caption); color: var(--text-muted); margin-top: 2px; font-family: var(--font-technical); }
+.toast .tclose { position: absolute; top: 0.375rem; right: 0.375rem; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.6875rem; line-height: 1; padding: 2px; }
+.toast .tclose:hover { color: var(--text-primary); }
+.toast .trail { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--tc); transform-origin: left; animation: toast-timer 5s linear forwards; }
+@media (prefers-reduced-motion: reduce) { .toast .trail { animation: none; opacity: 0.5; } }
+.toast:hover .trail { animation-play-state: paused; }
+@keyframes toast-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.toast.info { --tc: var(--state-resume); }
+.toast.success { --tc: var(--state-start); }
+.toast.warning { --tc: var(--state-warning); }
+.toast.danger { --tc: var(--state-stop); }
+
+
+/* ---- theme picker (design-specs.md §5 "Theme switcher") ---- */
+.theme-picker { position: relative; }
+.theme-toggle { display: inline-flex; align-items: center; gap: 0.375rem; cursor: pointer; }
+.theme-menu {
+  /* Anchored by its RIGHT edge (not left:0) — the theme picker sits inside the far-right
+     .toolbar-right column, so a left-anchored menu wider than that narrow column would overflow
+     past the window's right edge; Chromium's own overflow avoidance then repositions it away
+     from the button entirely (Stefan's screenshot: menu floating near the window corner, clearly
+     detached from its own toggle). right:0 keeps the whole menu inside the visible window,
+     directly below the button, regardless of how narrow .toolbar-right is. */
+  position: absolute; top: calc(100% + 0.375rem); right: 0; z-index: 20;
+  /* Wide enough that every wallpaper label (incl. "ИСЛЯМСКИ СУФИ ПЪТ"/"DAS DEUTSCHE HERZ", the
+     longest real-language strings) fits on one line at the item font-size below — the previous
+     16.25rem cap wrapped these to 2 lines (Stefan's screenshot). */
+  min-width: 13.75rem; max-width: min(20rem, 92vw); max-height: 70vh; overflow-y: auto;
+  padding: 0.25rem;
+  background: var(--panel-raised); border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 0.875rem 2.125rem -0.625rem #000c, inset 0 0 1.25rem -0.75rem var(--glow);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.theme-menu[hidden] { display: none; }
+/* One flat list of 10 clickable wallpaper options (theme+skin+background as one "look"),
+   no in-menu description — just the translated wallpaper name (Stefan's request). Smaller than
+   --scale-body + no-wrap so every label stays one line regardless of language/length. */
+.theme-item {
+  padding: 0.4375rem 0.5625rem; border: 0; background: transparent; cursor: pointer;
+  border-radius: var(--radius-control); color: var(--text-secondary);
+  text-align: left; font-size: var(--scale-mono);
+  /* max-width + min-width:0 is REQUIRED alongside white-space:nowrap for the ellipsis to actually
+     clip inside a flex-column parent (.theme-menu) — without it, a very long string (e.g. the
+     hex "joke" language's byte-dump encoding of a wallpaper name) stretches the flex item itself
+     wider than the menu instead of being clipped, blowing the menu out past its own rounded box
+     (Stefan's screenshot). */
+  display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--font-display); text-transform: var(--display-transform);
+  letter-spacing: var(--display-tracking); font-weight: var(--display-weight);
+}
+.theme-item:hover { background: var(--panel); color: var(--text-primary); }
+.theme-item.active { color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* ---- IMPERATOR "Play Veselin Marinov" popup (mirrors .terminal-dialog's exact structure -
+   Stefan: "make a popup like the settings or the terminal for marinov songs") ---- */
+.music-picker { position: relative; }
+.music-dialog { display: flex; flex-direction: column; }
+.music-dialog-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.5rem; padding-top: 0.5rem; }
+.music-tabs { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+.music-tab {
+  flex: 1; min-width: 0; padding: 0.4375rem 0.5625rem; border: 1px solid var(--border-hairline);
+  background: var(--panel); cursor: pointer; border-radius: var(--radius-control);
+  color: var(--text-secondary); font-size: var(--scale-caption);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.music-tab:hover { color: var(--text-primary); }
+.music-tab.active { color: var(--text-primary); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.music-tab-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.music-youtube-btn, .music-random-btn { align-self: flex-start; }
+/* Maximized (Stefan: "when i maximize the screen remove the buttons above the video") - the
+   dialog becomes a near-fullscreen video viewer, so the tabs/action buttons/track list above the
+   player just eat space without adding anything you'd use while already watching something. */
+.music-dialog.maximized .music-tabs,
+.music-dialog.maximized .music-tab-actions,
+.music-dialog.maximized .music-track-list { display: none; }
+/* min-height:0 on EVERY link in this flex chain (Stefan: "move the pause btn so i do not have
+   to scroll") - without it a flex column's children default to a content-based min-height, which
+   let the video's own intrinsic size push the whole bar taller than the dialog and shove the
+   transport row (pause/stop) below the fold instead of shrinking the video to fit. Only the
+   video should flex; the now-playing/seek/transport rows stay their natural fixed height so
+   they're always visible. */
+.music-dialog.maximized .music-player-bar { flex: 1; min-height: 0; }
+.music-dialog.maximized #music-video { max-height: none; flex: 1; min-height: 0; object-fit: contain; }
+.music-track-list {
+  flex: 1; min-height: 0; overflow-y: auto;
+  border: 1px solid var(--border-hairline); border-radius: var(--radius-panel);
+  background: var(--inset); padding: 0.25rem; display: flex; flex-direction: column; gap: 6px;
+}
+.music-item {
+  /* THE ACTUAL ROOT CAUSE of the "only half the text shows" bug, found after several wrong
+     theories (font, GPU, z-index): this is a flex COLUMN child with `overflow: hidden`. Per the
+     Flexbox spec, an item with overflow != visible gets an automatic minimum size of 0 (not
+     min-content), and flex children default to flex-shrink: 1 - so with ~80 items whose total
+     height dwarfs the container, the flex algorithm shrank each item's HEIGHT below its own text
+     height, and overflow:hidden clipped the bottom of every line. `flex: none` stops the vertical
+     shrink so each row keeps its natural height and the container scrolls instead. */
+  flex: none;
+  padding: 0.625rem 0.5625rem; border: 0; background: transparent; cursor: pointer;
+  border-radius: var(--radius-control); color: var(--text-secondary);
+  text-align: left; font-size: var(--scale-mono); line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.music-item:hover { background: var(--panel); color: var(--text-primary); }
+.music-item.active { color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--accent); }
+.music-empty { padding: 0.5rem 0.5625rem; color: var(--text-muted); font-size: var(--scale-body); }
+
+/* ---- language / flag picker (phase 3b) ---- */
+.lang-picker { position: relative; }
+.lang-toggle { display: inline-flex; align-items: center; gap: 0.375rem; cursor: pointer; }
+.flag {
+  display: inline-flex; width: 1.25rem; height: 0.8125rem; flex: 0 0 auto;
+  border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px var(--border-hairline);
+}
+.flag svg { display: block; width: 100%; height: 100%; }
+.lang-menu {
+  position: absolute; top: calc(100% + 0.375rem); right: 0; z-index: 20;
+  min-width: 10.75rem; max-width: min(13.75rem, 90vw); max-height: 70vh; overflow-y: auto;
+  padding: 0.25rem;
+  background: var(--panel-raised); border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 0.875rem 2.125rem -0.625rem #000c, inset 0 0 1.25rem -0.75rem var(--glow);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.lang-menu[hidden] { display: none; }
+.lang-item {
+  display: flex; align-items: center; gap: 0.5625rem;
+  padding: 0.375rem 0.5rem; border: 0; background: transparent; cursor: pointer;
+  border-radius: var(--radius-control); color: var(--text-secondary);
+  text-align: left; font-size: var(--scale-body);
+}
+.lang-item:hover { background: var(--panel); color: var(--text-primary); }
+.lang-item.active { color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--accent); }
+.lang-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Separates the real languages from the joke tier (Morse/hex/sign) in the picker menu. */
+.lang-divider { height: 1px; margin: 0.25rem 0.375rem; background: var(--border-hairline); }
+
+/* SGA is a font swap over the English strings (arch doc): the Standard Galactic Alphabet
+   font maps Latin A-Z glyphs to enchanting-table runes, so English strings render as
+   galactic symbols with no separate translation table needed. */
+@font-face {
+  font-family: "SGA";
+  src: url("/fonts/Sga-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+.window.lang-sga {
+  --font-display: "SGA", var(--font-technical);
+  --font-body: "SGA", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-technical: "SGA", "Cascadia Code", "Consolas", ui-monospace, monospace;
+}

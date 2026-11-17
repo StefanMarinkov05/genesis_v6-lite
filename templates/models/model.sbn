@@ -1,0 +1,105 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+{{ if spec.custom_validation_attributes }}using {{ meta.root_namespace }}.Infrastructure.Validation;{{ end }}
+
+{{ ns_open (meta.root_namespace + ".Models") }}
+
+{{~ has_enum = false ~}}
+{{~ for pp in model.properties; if pp.type == "enum"; has_enum = true; end; end ~}}
+{{~ if has_enum ~}}
+{{~ for pp in model.properties ~}}
+{{~ if pp.type == "enum" ~}}
+public enum {{ model.name }}{{ pp.name }}
+{
+{{~ for ev in pp.enum_values ~}}
+{{~ if ev.display_name ~}}
+    [Display(Name = "{{ ev.display_name }}")]
+{{~ end ~}}
+    {{ ev.value }},
+{{~ end ~}}
+}
+
+{{~ end ~}}
+{{~ end ~}}
+{{~ end ~}}
+{{~ audit = conventions.timestamps.created_at || conventions.timestamps.updated_at ~}}
+public class {{ model.name }}{{ if audit }} : AuditableEntity{{ end }}
+{
+{{~ for prop in model.properties ~}}
+{{~ if prop.key ~}}
+    [Key]
+    public {{ clr_type prop }} {{ prop.name }} { get; set; }
+{{~ else if prop.computed ~}}
+{{~ if prop.display_name ~}}
+    [Display(Name = "{{ prop.display_name }}")]
+{{~ end ~}}
+    public {{ clr_type prop }} {{ prop.name }} => {{ prop.computed }};
+{{~ else ~}}
+{{~ for v in prop.validations ~}}
+{{~ if v.custom ~}}
+    [{{ v.attribute }}({{ for a in v.args }}"{{ a }}", {{ end }}ErrorMessage = "{{ v.error_message }}")]
+{{~ else if v.args.size > 0 ~}}
+    [{{ v.attribute }}({{ v.args | array.join ", " }},{{ for kv in v.kwargs }} {{ kv.key }} = {{ kv.value }},{{ end }}
+        ErrorMessage = "{{ v.error_message }}")]
+{{~ else ~}}
+    [{{ v.attribute }}(ErrorMessage = "{{ v.error_message }}")]
+{{~ end ~}}
+{{~ end ~}}
+{{~ if prop.display_name ~}}
+    [Display(Name = "{{ prop.display_name }}")]
+{{~ end ~}}
+{{~ if prop.type == "string" && !prop.nullable ~}}
+    public required string {{ prop.name }} { get; set; }
+{{~ else if prop.type == "enum" ~}}
+    public {{ model.name }}{{ prop.name }} {{ prop.name }} { get; set; }
+{{~ else if prop.type == "DateOnly" && !prop.nullable ~}}
+    public DateOnly {{ prop.name }} { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+{{~ else ~}}
+    public {{ clr_type prop }} {{ prop.name }} { get; set; }
+{{~ end ~}}
+{{~ end ~}}
+
+{{~ end ~}}
+{{~ for rel in model.relations ~}}
+{{~ if rel.kind == "manyToOne" ~}}
+{{~ fk_label = rel.navigation ~}}
+{{~ for fp in model.properties; if fp.name == (rel.navigation + "Id") && fp.display_name; fk_label = fp.display_name; end; end ~}}
+    [Display(Name = "{{ fk_label }}")]
+    public {{ rel.target }}? {{ rel.navigation }} { get; set; }
+{{~ end ~}}
+{{~ end ~}}
+{{~ for other in spec.models ~}}
+{{~ for rel in other.relations ~}}
+{{~ if rel.target == model.name && rel.kind == "manyToOne" ~}}
+    public List<{{ other.name }}> {{ rel.inverse_navigation }} { get; set; } = {{ collection_init other.name }};
+{{~ end ~}}
+{{~ end ~}}
+{{~ end ~}}
+{{~ if model.soft_delete || conventions.delete_behavior == "soft" ~}}
+    // Меко изтриване: записът се скрива чрез глобален филтър, не се трие физически.
+    [Display(Name = "Изтрит")]
+    public bool IsDeleted { get; set; }
+    [Display(Name = "Изтрит на")]
+    public DateTime? DeletedAt { get; set; }
+{{~ end ~}}
+{{~ if model.images ~}}
+    public List<{{ model.name }}Image> Images { get; set; } = {{ collection_init (model.name + "Image") }};
+{{~ end ~}}
+}
+
+{{~ if model.images ~}}
+/// <summary>Изображение към {{ model.name }} - отделна таблица (стил на референтния проект).</summary>
+public class {{ model.name }}Image
+{
+    [Key]
+    public int Id { get; set; }
+
+    public int {{ model.name }}Id { get; set; }
+
+    public {{ model.name }}? {{ model.name }} { get; set; }
+
+    [Required]
+    public required string RelativePath { get; set; } // относителен спрямо wwwroot
+}
+{{~ end ~}}
+{{ ns_close }}

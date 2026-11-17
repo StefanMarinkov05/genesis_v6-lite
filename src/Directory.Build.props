@@ -1,0 +1,10 @@
+<Project>
+  <!-- Single source of truth for the version: the repo-root VERSION file.
+       Lives in src/ (not the repo root) on purpose: a root-level Directory.Build.props would
+       also be picked up by every generated app under out/, since MSBuild walks up the tree. -->
+  <PropertyGroup>
+    <DpsNnVersion>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../VERSION').Trim())</DpsNnVersion>
+    <Version>$(DpsNnVersion)</Version>
+    <InformationalVersion>$(DpsNnVersion)</InformationalVersion>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,847 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://genesis.dev/spec.schema.json",
+  "title": "genesis project spec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "meta",
+    "models"
+  ],
+  "properties": {
+    "specVersion": {
+      "type": "string",
+      "enum": [
+        "1.0",
+        "1.1"
+      ]
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectName",
+        "solutionName",
+        "rootNamespace"
+      ],
+      "properties": {
+        "projectName": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+        },
+        "solutionName": {
+          "type": "string"
+        },
+        "rootNamespace": {
+          "type": "string"
+        },
+        "domainHint": {
+          "type": "string"
+        },
+        "domainHintBg": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "bg",
+            "en"
+          ]
+        },
+        "targetFramework": {
+          "type": "string"
+        },
+        "sdkPin": {
+          "type": "string"
+        },
+        "database": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": {
+              "type": "string",
+              "enum": [
+                "SqlServer"
+              ]
+            },
+            "migrateOnStartup": {
+              "type": "boolean"
+            }
+          }
+        },
+        "style": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "bootstrapTheme": {
+              "type": "string"
+            },
+            "pickedBy": {
+              "type": "string"
+            },
+            "preset": {
+              "type": "string",
+              "enum": [
+                "midnight",
+                "sunset",
+                "forest",
+                "royal",
+                "slate",
+                "rose"
+              ]
+            }
+          }
+        },
+        "routing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "defaultArea": {
+              "type": "string"
+            }
+          }
+        },
+        "unsupportedRequests": {
+          "type": "array",
+          "description": "Capability-gap report: things the project description asked for that this spec cannot express with the generator's current features. Written by the agent (`dps-nn create`), surfaced in the report stage's project-summary.json and at the end of the run. Never affects generation.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "request",
+              "reason"
+            ],
+            "properties": {
+              "request": {
+                "type": "string",
+                "description": "What was asked for, in the description's own words."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why the spec cannot express it (which generator capability is missing)."
+              }
+            }
+          }
+        }
+      }
+    },
+    "conventions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timestamps": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "createdAt": {
+              "type": "boolean"
+            },
+            "updatedAt": {
+              "type": "boolean"
+            },
+            "deletedAt": {
+              "type": "boolean"
+            }
+          }
+        },
+        "deleteBehavior": {
+          "type": "string",
+          "enum": [
+            "hard",
+            "soft"
+          ]
+        },
+        "validationMessagesLanguage": {
+          "type": "string"
+        }
+      }
+    },
+    "variationProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seed": {
+          "type": "string"
+        },
+        "axes": {
+          "type": "object"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "variationProfileResolved": {
+      "type": "object"
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "file",
+          "properties"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isLookup": {
+            "type": "boolean"
+          },
+          "isSpecification": {
+            "type": "boolean"
+          },
+          "softDelete": {
+            "type": "boolean"
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/property"
+            }
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "target"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "manyToOne",
+                    "oneToMany"
+                  ]
+                },
+                "target": {
+                  "type": "string"
+                },
+                "navigation": {
+                  "type": "string"
+                },
+                "inverseNavigation": {
+                  "type": "string"
+                },
+                "onDelete": {
+                  "type": "string",
+                  "enum": [
+                    "Cascade",
+                    "Restrict",
+                    "SetNull",
+                    "NoAction"
+                  ]
+                }
+              }
+            }
+          },
+          "images": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "single",
+                  "multiple"
+                ]
+              },
+              "editSelectable": {
+                "type": "boolean"
+              },
+              "storedIn": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "dtos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "file"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "composedOf": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "source"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "customValidationAttributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "emit"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "emit": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "DateNotInFuture",
+              "DateNotInPast",
+              "DateAfter"
+            ]
+          }
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "localization": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "enum": [
+                "staticReplacementMap"
+              ]
+            },
+            "mapFile": {
+              "type": "string"
+            },
+            "comment": {
+              "type": "string"
+            }
+          }
+        },
+        "applicationUser": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "file": {
+              "type": "string"
+            },
+            "extends": {
+              "type": "string"
+            },
+            "keyType": {
+              "type": "string",
+              "enum": [
+                "guid-default"
+              ]
+            },
+            "extraProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/property"
+              }
+            },
+            "controller": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "writtenFromScratch": {
+                  "type": "boolean"
+                },
+                "actions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rules": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "errorDescriber": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "file": {
+              "type": "string"
+            },
+            "language": {
+              "type": "string"
+            }
+          }
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "isAdmin": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "seedUsers": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "inContextSeeding": {
+              "type": "boolean"
+            },
+            "users": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "email",
+                  "role"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "areas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "forRole"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "forRole": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controllers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "file",
+          "generatedBy"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "dto": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isLookup": {
+            "type": "boolean"
+          },
+          "isSpecification": {
+            "type": "boolean"
+          },
+          "generatedBy": {
+            "type": "string",
+            "enum": [
+              "scaffold",
+              "template",
+              "writtenFromScratch"
+            ]
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removedActions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removalReason": {
+            "type": "string"
+          },
+          "redirects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "after",
+                "to"
+              ],
+              "properties": {
+                "after": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "sorting": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "implementedIn": {
+                "type": "string",
+                "enum": [
+                  "controller",
+                  "view"
+                ]
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pageSize": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "ownership": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "userProperty": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "views": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "layout": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "file": {
+              "type": "string"
+            },
+            "header": {
+              "type": "object"
+            },
+            "footer": {
+              "type": "boolean"
+            }
+          }
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "file",
+              "kind"
+            ],
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "landing",
+                  "contactFormStatic",
+                  "cardGrid",
+                  "adminTable"
+                ]
+              },
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "card": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "search": {
+                "type": "object"
+              },
+              "unauthenticatedAction": {
+                "type": "string"
+              },
+              "rowButtons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      }
+    },
+    "seeding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "generator": {
+          "type": "string"
+        },
+        "rowsPerModel": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "imageSource": {
+          "type": "string",
+          "enum": [
+            "pexels",
+            "pixabay",
+            "picsum"
+          ]
+        },
+        "fkStrategy": {
+          "type": "string",
+          "enum": [
+            "symbolicRefs"
+          ]
+        },
+        "fkStrategyComment": {
+          "type": "string"
+        },
+        "outputFile": {
+          "type": "string"
+        }
+      }
+    },
+    "outputReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "include": {
+          "type": "array"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "property": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "int",
+            "decimal",
+            "DateTime",
+            "DateOnly",
+            "bool",
+            "double",
+            "enum"
+          ]
+        },
+        "key": {
+          "type": "boolean"
+        },
+        "foreignKey": {
+          "type": "boolean"
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "validations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "attribute"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "custom": {
+                "type": "boolean"
+              },
+              "args": {
+                "type": "array"
+              },
+              "errorMessage": {
+                "type": "string"
+              },
+              "kwargs": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "computed": {
+          "type": "string"
+        },
+        "seedHint": {
+          "type": "string"
+        },
+        "enumValues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

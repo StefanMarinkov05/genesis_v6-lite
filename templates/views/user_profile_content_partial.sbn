@@ -1,0 +1,145 @@
+@model {{ meta.root_namespace }}.Models.UserProfileViewModel
+{{~
+# Модел-обява + неговите свойства за показване (заглавие + цена).
+listing = ""
+for m in spec.models
+  has_uid = false
+  for p in m.properties; if p.name == "UserId"; has_uid = true; end; end
+  if has_uid && m.images; listing = m.name; end
+end
+listing_title = "Title"
+listing_price = ""
+if listing != ""
+  for m in spec.models
+    if m.name == listing
+      for p in m.properties
+        if !p.key && !p.foreign_key && p.type == "string" && listing_title == "Title"; listing_title = p.name; end
+        if p.type == "decimal" && listing_price == ""; listing_price = p.name; end
+      end
+    end
+  end
+end
+# Има ли ApplicationUser име/аватар (за списъците с потребители).
+has_fn = false
+has_pfp = false
+for p in spec.identity.application_user.extra_properties
+  if p.name == "FirstName"; has_fn = true; end
+  if p.name == "ProfilePicturePath"; has_pfp = true; end
+end
+~}}
+@{
+    // Режим на връзките: в админ детайла сочим към Admin/Users/Details, иначе към публичния профил.
+    var adminLinks = ViewData["AdminLinks"] as bool? ?? false;
+}
+
+{{~ if features.follows ~}}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h4>Последователи <span class="badge bg-secondary">@Model.Followers.Count</span></h4>
+        @if (!Model.Followers.Any()) { <p class="text-muted">Няма последователи.</p> }
+        <ul class="list-group">
+            @foreach (var u in Model.Followers)
+            {
+                <li class="list-group-item d-flex align-items-center gap-2">
+{{~ if has_pfp ~}}
+                    <img src="@(string.IsNullOrEmpty(u.ProfilePicturePath) ? "/images/avatar-default.svg" : "/" + u.ProfilePicturePath)"
+                         class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="аватар" />
+{{~ end ~}}
+                    @if (adminLinks)
+                    { <a asp-area="Admin" asp-controller="Users" asp-action="Details" asp-route-id="@u.Id">{{ if has_fn }}@(string.IsNullOrEmpty(u.FirstName) ? u.Email : u.FirstName){{ else }}@u.Email{{ end }}</a> }
+                    else
+                    { <a asp-area="Client" asp-controller="Profiles" asp-action="Public" asp-route-id="@ProfileHash.Of(u.Id)">{{ if has_fn }}@(string.IsNullOrEmpty(u.FirstName) ? u.Email : u.FirstName){{ else }}@u.Email{{ end }}</a> }
+                </li>
+            }
+        </ul>
+    </div>
+    <div class="col-md-6">
+        <h4>Следвани <span class="badge bg-secondary">@Model.Following.Count</span></h4>
+        @if (!Model.Following.Any()) { <p class="text-muted">Не следва никого.</p> }
+        <ul class="list-group">
+            @foreach (var u in Model.Following)
+            {
+                <li class="list-group-item d-flex align-items-center gap-2">
+{{~ if has_pfp ~}}
+                    <img src="@(string.IsNullOrEmpty(u.ProfilePicturePath) ? "/images/avatar-default.svg" : "/" + u.ProfilePicturePath)"
+                         class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="аватар" />
+{{~ end ~}}
+                    @if (adminLinks)
+                    { <a asp-area="Admin" asp-controller="Users" asp-action="Details" asp-route-id="@u.Id">{{ if has_fn }}@(string.IsNullOrEmpty(u.FirstName) ? u.Email : u.FirstName){{ else }}@u.Email{{ end }}</a> }
+                    else
+                    { <a asp-area="Client" asp-controller="Profiles" asp-action="Public" asp-route-id="@ProfileHash.Of(u.Id)">{{ if has_fn }}@(string.IsNullOrEmpty(u.FirstName) ? u.Email : u.FirstName){{ else }}@u.Email{{ end }}</a> }
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+{{~ end ~}}
+
+{{~ if listing != "" ~}}
+<h4>Обяви <span class="badge bg-secondary">@Model.Products.Count</span></h4>
+@if (!Model.Products.Any()) { <p class="text-muted">Няма обяви.</p> }
+<div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+    @foreach (var item in Model.Products)
+    {
+        <div class="col">
+            <div class="card h-100">
+                @if (item.Images.Count > 0)
+                {
+                    <img src="/@item.Images[0].RelativePath" class="card-img-top" style="height:160px;object-fit:cover;" alt="изображение" />
+                }
+                <div class="card-body">
+                    <h6 class="card-title"><a asp-area="Client" asp-controller="{{ listing }}s" asp-action="Details" asp-route-id="@item.Id">@item.{{ listing_title }}</a></h6>
+{{~ if listing_price != "" ~}}
+                    <p class="card-text text-muted">@item.{{ listing_price }} лв.</p>
+{{~ end ~}}
+                </div>
+            </div>
+        </div>
+    }
+</div>
+{{~ end ~}}
+
+{{~ if features.posts ~}}
+<h4>Публикации <span class="badge bg-secondary">@Model.Posts.Count</span></h4>
+@if (!Model.Posts.Any()) { <p class="text-muted">Няма публикации.</p> }
+<ul class="list-group mb-4">
+    @foreach (var p in Model.Posts)
+    {
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a asp-area="Client" asp-controller="Posts" asp-action="Details" asp-route-id="@p.Id">@p.Title</a>
+            <small class="text-muted">@p.CreatedAt.ToString("dd.MM.yyyy")</small>
+        </li>
+    }
+</ul>
+{{~ end ~}}
+
+{{~ if features.rating ~}}
+<h4>Отзиви <span class="badge bg-secondary">@Model.Feedbacks.Count</span></h4>
+@if (!Model.Feedbacks.Any()) { <p class="text-muted">Няма оставени отзиви.</p> }
+<ul class="list-group mb-4">
+    @foreach (var r in Model.Feedbacks)
+    {
+        <li class="list-group-item">
+            <span class="text-warning">@(new string('★', r.Stars))@(new string('☆', 5 - r.Stars))</span>
+            @if (!string.IsNullOrEmpty(r.Text)) { <span>@r.Text</span> }
+{{~ if listing != "" ~}}
+            <a class="ms-2 small" asp-area="Client" asp-controller="{{ listing }}s" asp-action="Details" asp-route-id="@r.{{ listing }}Id">@(r.{{ listing }}?.{{ listing_title }} ?? "към обявата")</a>
+{{~ end ~}}
+        </li>
+    }
+</ul>
+{{~ end ~}}
+
+{{~ if features.catalogues ~}}
+<h4>Каталози <span class="badge bg-secondary">@Model.Catalogues.Count</span></h4>
+@if (!Model.Catalogues.Any()) { <p class="text-muted">Няма каталози.</p> }
+<ul class="list-group mb-4">
+    @foreach (var c in Model.Catalogues)
+    {
+        <li class="list-group-item">
+            <a asp-area="Client" asp-controller="Catalogues" asp-action="PublicDetails" asp-route-id="@c.Id">@c.Name</a>
+            @if (!c.IsPublic) { <span class="badge bg-secondary ms-2">Личен</span> }
+        </li>
+    }
+</ul>
+{{~ end ~}}

@@ -1,0 +1,93 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Infrastructure;
+using {{ meta.root_namespace }}.Models;
+using {{ meta.root_namespace }}.Services;
+
+{{ ns_open (meta.root_namespace + ".Areas.Client.Controllers") }}
+
+{{~
+has_pfp = false
+if spec.identity
+  for ep in spec.identity.application_user.extra_properties; if ep.name == "ProfilePicturePath"; has_pfp = true; end; end
+end
+~}}
+/// <summary>
+/// A9 / Задача 26: публична страница на потребител - само за четене, достъпна без вход.
+/// Показва снимка/име + обобщеното публично съдържание (обяви, публикации, отзиви,
+/// последователи/следвани, публични каталози) чрез споделения UserProfileService.
+/// Задача 17: маршрутът приема хеш (ProfileHash.Of), не суровия Identity Guid -
+/// обхождаме потребителите и сравняваме хешовете, за да намерим съответния.
+/// </summary>
+[Area("Client")]
+[AllowAnonymous]
+public class ProfilesController : Controller
+{
+    private readonly UserProfileService _profiles;
+    private readonly UserManager<ApplicationUser> _userManager;
+{{~ if has_pfp ~}}
+    private readonly FileUploadService _fileUpload;
+
+    public ProfilesController(UserProfileService profiles, UserManager<ApplicationUser> userManager, FileUploadService fileUpload)
+    {
+        _profiles = profiles;
+        _userManager = userManager;
+        _fileUpload = fileUpload;
+    }
+{{~ else ~}}
+    public ProfilesController(UserProfileService profiles, UserManager<ApplicationUser> userManager)
+    {
+        _profiles = profiles;
+        _userManager = userManager;
+    }
+{{~ end ~}}
+
+    public async Task<IActionResult> Public(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return NotFound();
+        // ProfileHash.Of is plain C#, not SQL-translatable - materialize IDs first, then compare in-memory.
+        var allIds = await _userManager.Users.Select(u => u.Id).ToListAsync();
+        var userId = allIds.FirstOrDefault(uid => ProfileHash.Of(uid) == id);
+        if (userId is null) return NotFound();
+        // publicOnly: true - външните посетители виждат само публичните каталози.
+        var viewerUserId = _userManager.GetUserId(User); // null при анонимен достъп
+        var vm = await _profiles.BuildAsync(userId, publicOnly: true, viewerUserId);
+        if (vm is null) return NotFound();
+        return View(vm);
+    }
+{{~ if has_pfp ~}}
+
+    // Задача 21: собственикът може да смени или изтрие СВОЯТА профилна снимка - винаги
+    // текущо логнатия потребител, независимо какъв route/form параметър би бил подаден.
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePicture(IFormFile? picture)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return NotFound();
+        var saved = await _fileUpload.SaveImageAsync(picture, "uploads/avatars");
+        if (saved is not null)
+        {
+            user.ProfilePicturePath = saved;
+            await _userManager.UpdateAsync(user);
+        }
+        return RedirectToPage("/Account/Manage/Index", new { area = "Identity" });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemovePicture()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return NotFound();
+        user.ProfilePicturePath = null;
+        await _userManager.UpdateAsync(user);
+        return RedirectToPage("/Account/Manage/Index", new { area = "Identity" });
+    }
+{{~ end ~}}
+}
+{{ ns_close }}

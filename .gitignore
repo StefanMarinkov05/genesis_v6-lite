@@ -1,0 +1,39 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+.metals/
+.bloop/
+prompts/in/*.json
+*.log.jsonl
+plan/state.json
+plan/state.json.bak
+out/
+logs/*.jsonl
+logs/registry.json
+logs/registry.jsonl
+logs/*.log
+logs/gui-build-manifest.json
+logs/launched-apps.json
+# Per-project subfolders (logs/<Project>/) - actions.log.jsonl, db.json, seed-credentials.txt
+# (plaintext seed passwords - must never be committed). Only logs/README.md stays tracked.
+logs/*/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+out_facenote_run*.log
+boot_test*.log
+fixtures/*.lock.json
+.image-cache/
+
+# "Play Veselin Marinov" media (design/music/*) - Stefan drops files here locally; only a small
+# curated subset is tracked via Git LFS (see .gitattributes) to stay under the free 1GB LFS quota.
+# Ignore everything in these folders EXCEPT the tracked subset, which git add stages explicitly.
+design/music/songs-audio/*
+design/music/concerts-audio/*
+design/music/concerts-video/*
+!design/music/*/.gitkeep
+
+# Handbook PDF build (scripts/build-handbook.py): intermediates + output
+/build/
+/dist/

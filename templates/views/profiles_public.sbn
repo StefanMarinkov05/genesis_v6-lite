@@ -1,0 +1,42 @@
+@model {{ meta.root_namespace }}.Models.UserProfileViewModel
+@{
+    ViewData["Title"] = "Профил";
+    ViewData["AdminLinks"] = false;
+}
+{{~
+# Определяме дали ApplicationUser има FirstName / ProfilePicturePath, за да не реферираме
+# несъществуващи свойства (спецификацията може да ги няма).
+has_fn = false
+has_pfp = false
+for p in spec.identity.application_user.extra_properties
+  if p.name == "FirstName"; has_fn = true; end
+  if p.name == "ProfilePicturePath"; has_pfp = true; end
+end
+~}}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+{{~ if has_pfp ~}}
+    <img src="@(string.IsNullOrEmpty(Model.User.ProfilePicturePath) ? "/images/avatar-default.svg" : "/" + Model.User.ProfilePicturePath)"
+         class="rounded-circle" style="width:96px;height:96px;object-fit:cover;" alt="Профилна снимка" />
+{{~ end ~}}
+    <h1 class="mb-0">{{ if has_fn }}@(string.IsNullOrEmpty(Model.User.FirstName) ? "Потребител" : Model.User.FirstName){{ else }}Потребител{{ end }}</h1>
+{{~ if features.follows ~}}
+    @if (User.Identity?.IsAuthenticated == true && !Model.IsOwnProfile)
+    {
+        <form asp-area="Client" asp-controller="Follows" asp-action="Toggle" method="post" class="ms-auto">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="targetUserId" value="@Model.User.Id" />
+            @if (Model.IsFollowedByViewer)
+            {
+                <button type="submit" class="btn btn-outline-secondary">Спри да следваш</button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-primary">Последвай</button>
+            }
+        </form>
+    }
+{{~ end ~}}
+</div>
+
+<partial name="_UserProfileContent" model="Model" />

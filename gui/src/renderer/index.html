@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Strict CSP: the renderer loads nothing external. Scripts/styles are bundled locally. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; media-src 'self' app-media:"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DPS-NN — Genesis</title>
+    <!-- Boot splash - styled INLINE so it paints before styles.css/main.ts finish loading
+         (the actual gap it's covering). main.ts's init() removes #boot-splash from the DOM as
+         its very last step, once the real UI is fully wired and ready - Stefan: "loading screen
+         ... before the [UI] which takes from 5sec until the gui css/ts/js are loaded". -->
+    <style>
+      #boot-splash {
+        position: fixed; inset: 0; z-index: 999;
+        display: flex; align-items: center; justify-content: center;
+        background: #050608;
+      }
+      #boot-splash img { max-width: 42vw; max-height: 42vh; filter: drop-shadow(0 0 24px #3fd0ff66); }
+      #boot-splash.gone { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="boot-splash"><img src="/logo/loading.png" alt="" /></div>
+    <div class="window" data-theme="nova" id="window">
+      <div class="canvas-layer"><canvas id="stars" aria-hidden="true"></canvas></div>
+      <div class="scrim-layer"></div>
+      <div class="logo-watermark" aria-hidden="true"></div>
+      <div class="frame-ornament"></div>
+      <span class="corner tl">◆</span>
+      <span class="corner bl">◆</span>
+
+      <div class="content">
+        <!-- title bar -->
+        <div class="titlebar">
+          <!-- Full app title text stays removed (it's the Settings button's own label now).
+               This is a short callsign/badge instead ("ДПС-НН Щаб" / "HQ" - Stefan), styled as
+               its own small element, not a page heading. -->
+          <div class="brand">
+            <span class="logo-mark" aria-hidden="true"></span>
+            <span class="hq-badge" id="hq-badge">HQ</span>
+          </div>
+          <div class="win-controls">
+            <button type="button" id="win-min" aria-label="Minimize">–</button>
+            <button type="button" id="win-max" aria-label="Maximize">▢</button>
+            <button type="button" class="close" id="win-close" aria-label="Close">✕</button>
+          </div>
+        </div>
+
+        <!-- main grid: LEFT column = poster art only now (progress/run controls moved to
+             rightcol, below the toolbar - Stefan); RIGHT column = toolbar + progress + run
+             controls, packed top-aligned, never scrolling. -->
+        <div class="leftcol"></div>
+
+        <div class="rightcol">
+          <!-- toolbar — ONE vertical column (Stefan: a 2-column split covered Veselin Marinov's
+               face on posters I/III). Language/Recent-projects/Wallpaper live in the Settings
+               sheet; Debug stays here as its own button (moved to Settings, then explicitly
+               moved back - Stefan wanted it accessible without opening Settings). The Settings
+               button's OWN label is now the app title (was "Settings" - see main.ts applyStrings,
+               and the removed titlebar .title-text above). -->
+          <div class="toolbar">
+            <button type="button" class="chip" id="settings-open"><span id="settings-icon">⚙</span> <span id="settings-label">DPS-NN</span></button>
+            <label class="debug-toggle chip"
+              ><input type="checkbox" id="debug-toggle" /> <span id="debug-label">Debug</span></label
+            >
+            <button type="button" class="chip" id="toolbar-reopen" disabled>Last result</button>
+            <!-- IMPERATOR-only: shown/hidden by main.ts based on the active wallpaper's theme. -->
+            <div class="music-picker" id="music-picker" hidden>
+              <button type="button" class="chip" id="music-toggle">
+                ♪ <span id="music-label">Play Veselin Marinov</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- progress + run controls, moved here below the toolbar (Stefan: "move ... below
+               these if it will fit") - was anchored to the bottom of .leftcol before. Progress +
+               Pause/Resume/Stop start `hidden` here as the correct static baseline (nothing is
+               generating on first paint); main.ts's setRunState is the single place that flips
+               it, on every state change. -->
+          <div class="progress-wrap" id="progress-wrap" hidden>
+            <div class="progress-label"><span id="progress-stage">idle</span><span id="progress-count">0 / 7</span></div>
+            <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          </div>
+          <div class="run-row-wrap">
+            <div class="run-row" id="run-row">
+              <button type="button" class="run-btn start" id="run-start">▶ Start</button>
+              <button type="button" class="run-btn pause" id="run-pause" disabled hidden>❚❚ Pause</button>
+              <button type="button" class="run-btn resume" id="run-resume" disabled hidden>▶▶ Resume</button>
+              <button type="button" class="run-btn stop" id="run-stop" disabled hidden>■ Stop</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- footer (runtime from design/footer.md; emptied on IMPERATOR — see main.ts
+             applyFooterVisibility — but the element/space stays so the bottom of the VM art
+             is still visible, not covered by a taller content area) -->
+        <div class="footer" id="footer"></div>
+
+        <!-- duplicate dialog -->
+        <div class="dialog-backdrop" id="dup-dialog" data-open="false" role="alertdialog" aria-modal="true" aria-labelledby="dup-title">
+          <div class="dialog">
+            <div class="sheet-head"><h4 id="dup-title" style="margin:0">Duplicate build</h4><button type="button" id="dup-close" aria-label="Close">✕</button></div>
+            <p class="lead" id="dup-lead">This specification + seed combination has already been generated.</p>
+            <dl>
+              <dt id="dup-l-project">Project</dt><dd id="dup-project">—</dd>
+              <dt id="dup-l-last">Last build</dt><dd id="dup-last">—</dd>
+              <dt id="dup-l-out">Output</dt><dd id="dup-out">—</dd>
+            </dl>
+            <div class="dialog-actions">
+              <button type="button" class="dialog-btn primary" id="dup-open">Open existing</button>
+              <button type="button" class="dialog-btn warning" id="dup-regen">Generate anyway</button>
+              <button type="button" class="dialog-btn plain" id="dup-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- "prank" popup - shown once when Start is clicked, text-only (Stefan: pure joke, no
+             actual slowdown logic behind it). Auto-closes after 30s or via the Close button. -->
+        <div class="dialog-backdrop" id="prank-dialog" data-open="false" role="alertdialog" aria-modal="true" aria-labelledby="prank-title">
+          <div class="dialog">
+            <div class="sheet-head"><h4 id="prank-title" style="margin:0">Performance notice</h4><button type="button" id="prank-close" aria-label="Close">✕</button></div>
+            <p class="lead" id="prank-body">…</p>
+            <div class="dialog-actions">
+              <button type="button" class="dialog-btn primary" id="prank-ok">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- completion / report readout -->
+        <div class="result-screen" id="report-screen" data-open="false" role="dialog" aria-modal="true" aria-labelledby="report-title">
+          <div class="readout ok">
+            <div class="readout-head" id="report-title"><span class="badge">✓</span> <span id="report-title-text">Done</span><button type="button" id="report-close" aria-label="Close" style="margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer;font-size:14px">✕</button></div>
+            <dl id="report-dl"></dl>
+            <div class="readout-actions">
+              <button type="button" class="btn primary" id="report-run-app">Run app</button>
+              <button type="button" class="btn danger" id="report-kill-app" disabled>Kill app</button>
+              <button type="button" class="btn" id="report-open-browser">Open in browser</button>
+              <button type="button" class="btn" id="report-open-folder">Open folder</button>
+              <button type="button" class="btn" id="report-new">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- error / retry -->
+        <div class="result-screen" id="error-screen" data-open="false" role="dialog" aria-modal="true" aria-labelledby="error-title">
+          <div class="readout err">
+            <div class="readout-head" id="error-title"><span class="badge">!</span> <span id="error-title-text">Build failed</span><button type="button" id="error-close" aria-label="Close" style="margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer;font-size:14px">✕</button></div>
+            <dl>
+              <dt id="error-l-stage">Stage</dt><dd id="error-stage" style="font-family:var(--font-technical);font-size:var(--scale-mono);color:var(--text-secondary)">—</dd>
+            </dl>
+            <p class="err-cause" id="error-cause">—</p>
+            <div class="readout-actions">
+              <button type="button" class="btn primary" id="error-retry" disabled>Retry from this stage</button>
+              <button type="button" class="btn" id="error-new">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- settings sheet -->
+        <div class="sheet-backdrop" id="settings-sheet" data-open="false" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+          <aside class="sheet">
+            <div class="sheet-head"><h4 id="settings-title">Settings</h4><button type="button" id="settings-close" aria-label="Close">✕</button></div>
+            <!-- Language/Wallpaper/Recent-projects, relocated here from the toolbar (Stefan) -
+                 same ids, same JS wiring, just a new home. Debug moved here too, then explicitly
+                 moved BACK to the toolbar (Stefan) - stays a toolbar button now, not here. -->
+            <div class="field settings-quick-row">
+              <div class="lang-picker" id="lang-picker"></div>
+              <div class="theme-picker" id="theme-picker"></div>
+            </div>
+            <div class="field">
+              <button type="button" class="chip" id="recent-open"><span id="recent-label">Recent projects</span></button>
+            </div>
+            <!-- Specification + Seed panels, relocated here from the right column (Stefan). Same
+                 ids/markup - main.ts's setRunState still hides #panels while a run is generating,
+                 same as when it lived in .rightcol. -->
+            <div class="panels" id="panels">
+              <div class="panel">
+                <h3 id="spec-heading">Specification</h3>
+                <div class="well" id="spec-well">No spec selected</div>
+                <div class="select-row">
+                  <select id="spec-select"></select>
+                  <button type="button" class="upload-btn" id="spec-upload">Upload…</button>
+                </div>
+                <!-- Agent mode (ADR-013): describe the project instead of picking a spec. -->
+                <textarea id="spec-describe" rows="4" placeholder="Or describe the project in your own words…"></textarea>
+                <div class="select-row">
+                  <button type="button" class="claude-btn" id="spec-create">✦ Generate from description</button>
+                </div>
+              </div>
+              <div class="panel">
+                <h3 id="seed-heading">Seed</h3>
+                <div class="well" id="seed-well">No seed selected (optional)</div>
+                <div class="select-row">
+                  <select id="seed-select"></select>
+                  <button type="button" class="upload-btn" id="seed-upload">Upload…</button>
+                  <button type="button" class="claude-btn" id="seed-claude" disabled>✦ Claude</button>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="s-key" id="s-key-label">Anthropic API key</label>
+              <input id="s-key" type="password" placeholder="sk-ant-…" />
+              <span class="key-state" id="s-key-state"></span>
+            </div>
+            <div class="field">
+              <label for="s-out" id="s-out-label">Output folder</label>
+              <input id="s-out" type="text" />
+            </div>
+            <div class="readout-actions">
+              <button type="button" class="btn primary" id="settings-save">Save</button>
+              <button type="button" class="btn" id="settings-cancel">Cancel</button>
+            </div>
+          </aside>
+        </div>
+
+        <!-- recent projects sheet -->
+        <div class="sheet-backdrop" id="recent-sheet" data-open="false" role="dialog" aria-modal="true" aria-labelledby="recent-title">
+          <aside class="sheet">
+            <div class="sheet-head"><h4 id="recent-title">Recent projects</h4><button type="button" id="recent-close" aria-label="Close">✕</button></div>
+            <div class="recent-list" id="recent-list"></div>
+          </aside>
+        </div>
+
+        <!-- debug terminal popup (Stefan: Debug should open a closable popup instead of an
+             always-inline box that ate leftcol space / could cover other things). #debug-toggle
+             (toolbar) open/closes this via the SAME toggleDebug() as before - just pointed at a
+             centered dialog now instead of an inline flex sibling. -->
+        <div class="sheet-backdrop terminal-backdrop" id="terminal-sheet" data-open="false" role="dialog" aria-modal="true" aria-labelledby="terminal-sheet-title">
+          <aside class="sheet terminal-dialog" id="terminal-dialog">
+            <div class="sheet-head">
+              <h4 id="terminal-sheet-title">Debug terminal</h4>
+              <div class="terminal-dialog-controls">
+                <!-- Explicit max/restore button (Stefan: "like a window") - complements the
+                     native resize:both drag handle (bottom-right corner) with a one-click way to
+                     do the same thing, same as a real OS window's maximize button. -->
+                <button type="button" id="terminal-maximize" aria-label="Maximize">▢</button>
+                <button type="button" id="terminal-close" aria-label="Close">✕</button>
+              </div>
+            </div>
+            <div class="terminal-wrap" id="terminal-wrap">
+              <div class="terminal" id="terminal"></div>
+            </div>
+          </aside>
+        </div>
+
+        <!-- IMPERATOR "Play Veselin Marinov" popup — plays a local file Stefan supplies himself
+             (design/music/{songs-audio,concerts-audio,concerts-video}/); this app never bundles
+             or streams any media content. Same resizable-dialog pattern as #terminal-sheet
+             (Stefan: "make a popup like the settings or the terminal for marinov songs"). The
+             left pane picks a category + track; the right pane shows the player (video element
+             visible only for concerts-video, otherwise just the audio + seek bar) and can be
+             expanded via the same maximize button as the debug terminal to watch videos larger. -->
+        <div class="sheet-backdrop terminal-backdrop" id="music-sheet" data-open="false" role="dialog" aria-modal="true" aria-labelledby="music-sheet-title">
+          <aside class="sheet terminal-dialog music-dialog" id="music-dialog">
+            <div class="sheet-head">
+              <h4 id="music-sheet-title">Play Veselin Marinov</h4>
+              <div class="terminal-dialog-controls">
+                <button type="button" id="music-maximize" aria-label="Maximize">▢</button>
+                <button type="button" id="music-close" aria-label="Close">✕</button>
+              </div>
+            </div>
+            <div class="music-dialog-body">
+              <div class="music-tabs" id="music-tabs" role="tablist">
+                <button type="button" class="music-tab" id="music-tab-songsAudio" role="tab">
+                  <span id="music-tab-songsAudio-label">Songs</span>
+                </button>
+                <button type="button" class="music-tab" id="music-tab-concertsAudio" role="tab">
+                  <span id="music-tab-concertsAudio-label">Concerts (audio)</span>
+                </button>
+                <button type="button" class="music-tab" id="music-tab-concertsVideo" role="tab">
+                  <span id="music-tab-concertsVideo-label">Concerts (video)</span>
+                </button>
+              </div>
+              <div class="music-tab-actions">
+                <button type="button" class="chip music-youtube-btn" id="music-youtube">
+                  <span id="music-youtube-label">Open on YouTube</span>
+                </button>
+                <button type="button" class="chip music-random-btn" id="music-random">
+                  <span id="music-random-label">Play a random local track</span>
+                </button>
+              </div>
+              <div class="music-track-list" id="music-track-list"></div>
+              <div class="music-player-bar" id="music-player-bar" hidden>
+                <audio id="music-player" hidden></audio>
+                <video id="music-video" hidden></video>
+                <div class="music-now-playing" id="music-now-playing"></div>
+                <div class="music-seek-row">
+                  <span class="music-time" id="music-time-current">0:00</span>
+                  <input type="range" id="music-seek" min="0" max="100" value="0" step="0.1" />
+                  <span class="music-time" id="music-time-total">0:00</span>
+                </div>
+                <div class="music-transport">
+                  <button type="button" class="btn" id="music-playpause" aria-label="Pause">❚❚</button>
+                  <button type="button" class="btn" id="music-stop">
+                    <span id="music-stop-label">Stop</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+      </div>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

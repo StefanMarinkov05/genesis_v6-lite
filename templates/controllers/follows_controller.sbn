@@ -1,0 +1,85 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+
+{{ ns_open (meta.root_namespace + ".Areas.Client.Controllers") }}
+
+/// <summary>Мрежа от последователи: списъци Followers/Following + Follow/Unfollow.</summary>
+[Area("Client")]
+[Authorize]
+public class FollowsController : Controller
+{
+    private readonly {{ meta.project_name }}Context _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public FollowsController({{ meta.project_name }}Context context, UserManager<ApplicationUser> userManager)
+    {
+        _context = context;
+        _userManager = userManager;
+    }
+
+    // Task 17: последователи И следвани на ЕДНА страница (две колони), чрез
+    // FollowersFollowingViewModel вместо два отделни изгледа с "Mode" флаг.
+    public async Task<IActionResult> List()
+    {
+        var userId = _userManager.GetUserId(User)!;
+
+        var followerIds = await _context.Follows.AsNoTracking()
+            .Where(f => f.FollowedUserId == userId)
+            .Select(f => f.FollowerUserId)
+            .ToListAsync();
+        var followedIds = await _context.Follows.AsNoTracking()
+            .Where(f => f.FollowerUserId == userId)
+            .Select(f => f.FollowedUserId)
+            .ToListAsync();
+
+        // Един достъп до таблицата с потребители за двата списъка.
+        var relevant = followerIds.Concat(followedIds).Distinct().ToList();
+        var users = await _userManager.Users.AsNoTracking()
+            .Where(u => relevant.Contains(u.Id))
+            .ToListAsync();
+        var byId = users.ToDictionary(u => u.Id);
+
+        var model = new FollowersFollowingViewModel
+        {
+            Followers = followerIds.Where(byId.ContainsKey).Select(id => byId[id]).ToList(),
+            Following = followedIds.Where(byId.ContainsKey).Select(id => byId[id]).ToList(),
+        };
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Toggle(string targetUserId)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        if (targetUserId == userId) return BadRequest("Не можете да последвате себе си.");
+        var existing = await _context.Follows
+            .FirstOrDefaultAsync(f => f.FollowerUserId == userId && f.FollowedUserId == targetUserId);
+        if (existing is null)
+            _context.Follows.Add(new Follow { FollowerUserId = userId, FollowedUserId = targetUserId });
+        else
+            _context.Follows.Remove(existing);
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Двоен клик/паралелна заявка вече е приложила същата промяна (0 засегнати редове
+            // при изтриване или конфликт при добавяне) - крайното състояние вече е постигнато,
+            // третираме като идемпотентен успех вместо грешка.
+        }
+        return Redirect(Request.Headers.Referer.FirstOrDefault() ?? Url.Action(nameof(List))!);
+    }
+}
+
+/// <summary>Task 17: двата списъка (последователи + следвани) за общата страница.</summary>
+public sealed class FollowersFollowingViewModel
+{
+    public IReadOnlyList<ApplicationUser> Followers { get; init; } = new List<ApplicationUser>();
+    public IReadOnlyList<ApplicationUser> Following { get; init; } = new List<ApplicationUser>();
+}
+{{ ns_close }}

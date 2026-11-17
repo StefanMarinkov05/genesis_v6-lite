@@ -1,0 +1,13 @@
+@page
+@model LogoutModel
+@{
+    ViewData["Title"] = "Изход";
+}
+
+<div class="container py-5 text-center">
+    <header>
+        <h1 class="fw-bold">@ViewData["Title"]</h1>
+        <p class="lead">Успешно излязохте от приложението.</p>
+        <a class="btn btn-primary {{ variation.axes.button_shape }} px-4" asp-area="" asp-controller="Home" asp-action="Index">Към началната страница</a>
+    </header>
+</div>

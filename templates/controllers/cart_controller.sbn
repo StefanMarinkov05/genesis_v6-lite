@@ -1,0 +1,168 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+
+{{ ns_open (meta.root_namespace + ".Areas.Client.Controllers") }}
+
+/// <summary>
+/// Количка + поръчка с 1 клик: без платежен доставчик - бутонът директно създава
+/// Order от съдържанието на количката и я изпразва. Статусът на поръчката тръгва
+/// от Nova; историята на поръчките е само за четене.
+/// </summary>
+[Area("Client")]
+[Authorize]
+public class CartController : Controller
+{
+    private readonly {{ meta.project_name }}Context _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public CartController({{ meta.project_name }}Context context, UserManager<ApplicationUser> userManager)
+    {
+        _context = context;
+        _userManager = userManager;
+    }
+
+    public async Task<IActionResult> Index()
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var items = await _context.CartItems.AsNoTracking()
+            .Where(i => i.UserId == userId)
+            .Include(i => i.{{ primary }})
+            .ToListAsync();
+        return View(items);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Add(int itemId)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var existing = await _context.CartItems.FirstOrDefaultAsync(i => i.UserId == userId && i.{{ primary }}Id == itemId);
+        if (existing is null)
+            _context.CartItems.Add(new CartItem { UserId = userId, {{ primary }}Id = itemId, Quantity = 1 });
+        else
+            existing.Quantity++;
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Remove(int id)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var item = await _context.CartItems.FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
+        if (item is not null)
+        {
+            _context.CartItems.Remove(item);
+            await _context.SaveChangesAsync();
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    // Поръчка с доставка: количка -> Order + OrderItems, количката се изпразва.
+    // Получателят и адресът са задължителни (проверка на сървъра - формата подава
+    // само низове, моделът не се биндва директно, затова [Required] върху Order
+    // не се задейства автоматично тук).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Checkout([FromForm] string? receiverName, [FromForm] string? deliveryAddress)
+    {
+        if (string.IsNullOrWhiteSpace(receiverName) || string.IsNullOrWhiteSpace(deliveryAddress))
+        {
+            TempData["Error"] = "Моля, въведете получател и адрес за доставка.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var userId = _userManager.GetUserId(User)!;
+        var items = await _context.CartItems
+            .Where(i => i.UserId == userId)
+            .Include(i => i.{{ primary }})
+            .ToListAsync();
+        if (items.Count == 0) return RedirectToAction(nameof(Index));
+
+        var order = new Order
+        {
+            UserId = userId,
+            Status = OrderStatus.Nova,
+            Total = items.Sum(i => (i.{{ primary }}?.{{ price_property }} ?? 0) * i.Quantity),
+            ReceiverName = receiverName.Trim(),
+            DeliveryAddress = deliveryAddress.Trim()
+        };
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync(); // ID за редовете по-долу
+
+        foreach (var item in items)
+        {
+            _context.OrderItems.Add(new OrderItem
+            {
+                OrderId = order.Id,
+                {{ primary }}Id = item.{{ primary }}Id,
+                Quantity = item.Quantity,
+                UnitPrice = item.{{ primary }}?.{{ price_property }} ?? 0
+            });
+        }
+{{~
+# Флаг за статус: ако основният модел има enum свойство Status, поръчаният запис
+# се маркира с последната стойност (напр. Sold) и изчезва от търсачката. Ако моделът
+# ИМА и Quantity - статусът вместо това се извежда от наличността (задача 19): купеното
+# количество се приспада, статусът се преизчислява от новата наличност.
+status_enum = null
+has_quantity = false
+for tm in spec.models
+  if tm.name == primary
+    for tp in tm.properties
+      if tp.type == "enum" && tp.name == "Status"; status_enum = tp; end
+      if tp.type == "int" && tp.name == "Quantity"; has_quantity = true; end
+    end
+  end
+end
+~}}
+{{~ if status_enum && has_quantity ~}}
+        // Купеното количество се приспада от наличността; статусът се извежда от нея (задача 19).
+        foreach (var item in items)
+            if (item.{{ primary }} is { } bought)
+            {
+                bought.Quantity = Math.Max(0, bought.Quantity - item.Quantity);
+                bought.Status = bought.Quantity > 0 ? {{ primary }}Status.{{ (status_enum.enum_values | array.first).value }} : {{ primary }}Status.{{ (status_enum.enum_values | array.last).value }};
+            }
+{{~ else if status_enum ~}}
+        // Поръчаният артикул сменя статуса си и се скрива от каталога (без двойни поръчки).
+        foreach (var item in items)
+            if (item.{{ primary }} is { } bought)
+                bought.Status = {{ primary }}Status.{{ (status_enum.enum_values | array.last).value }};
+{{~ end ~}}
+        _context.CartItems.RemoveRange(items);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Orders));
+    }
+
+    // История на поръчките - само за четене.
+    public async Task<IActionResult> Orders()
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var orders = await _context.Orders.AsNoTracking()
+            .Where(o => o.UserId == userId)
+            .Include(o => o.Items)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+        return View(orders);
+    }
+
+    // A6: детайли на конкретна поръчка - само собствената, само за четене.
+    // Глобалният soft-delete филтър върху Order скрива изтритите (връща NotFound).
+    public async Task<IActionResult> OrderDetails(int id)
+    {
+        var userId = _userManager.GetUserId(User)!;
+        var order = await _context.Orders.AsNoTracking()
+            .Where(o => o.Id == id && o.UserId == userId)
+            .Include(o => o.Items)
+                .ThenInclude(it => it.{{ primary }})
+            .FirstOrDefaultAsync();
+        if (order is null) return NotFound();
+        return View(order);
+    }
+}
+{{ ns_close }}

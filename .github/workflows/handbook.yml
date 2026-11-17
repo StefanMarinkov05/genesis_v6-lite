@@ -1,0 +1,47 @@
+name: Handbook PDF
+
+# Builds the Architecture Handbook from docs/ (Markdown + Mermaid stay the single source;
+# scripts/build-handbook.py only assembles and typesets). Every docs change on master yields a
+# downloadable artifact; publishing a GitHub release attaches the PDF to it.
+on:
+  push:
+    branches: [master]
+    paths: ["docs/**", "scripts/build-handbook.py", ".github/workflows/handbook.yml", "VERSION"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  handbook:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # only the release-upload step writes
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (mermaid-cli runs via npx)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+
+      - name: Install pandoc 3.13, XeLaTeX, DejaVu fonts
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/pandoc.deb" https://github.com/jgm/pandoc/releases/download/3.13/pandoc-3.13-1-amd64.deb
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "$RUNNER_TEMP/pandoc.deb" \
+            texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended \
+            fonts-dejavu fonts-lmodern
+
+      - name: Build handbook
+        run: python3 scripts/build-handbook.py --out dist/dps-nn-handbook.pdf
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dps-nn-handbook
+          path: dist/dps-nn-handbook.pdf
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/dps-nn-handbook.pdf --clobber

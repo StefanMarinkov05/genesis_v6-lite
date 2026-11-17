@@ -1,0 +1,140 @@
+@model IEnumerable<{{ meta.root_namespace }}.Models.{{ model.name }}>
+@{
+    ViewData["Title"] = "{{ model.name }} - администрация";
+}
+
+{{~
+create_removed = false
+if owner
+  for ra in owner.removed_actions; if ra == "Create"; create_removed = true; end; end
+end
+~}}
+<h1>Управление</h1>
+
+{{~ if !create_removed ~}}
+<p>
+    <a class="btn btn-primary" asp-action="Create">Създай нов запис</a>
+</p>
+{{~ end ~}}
+
+{{~
+# Details бутон: само когато има >1 не-ключов атрибут И действието не е премахнато от спецификацията.
+non_key_count = 0
+for p in model.properties; if !p.key; non_key_count = non_key_count + 1; end; end
+details_removed = false
+if owner
+  for ra in owner.removed_actions; if ra == "Details"; details_removed = true; end; end
+end
+sorting_on = owner && owner.sorting && owner.sorting.enabled
+~}}
+<table class="table table-striped">
+    <thead>
+        <tr>
+{{~ for p in model.properties ~}}
+{{~ if !p.key && !p.foreign_key && !p.computed ~}}
+{{~ sortable = false ~}}
+{{~ if sorting_on; for f in owner.sorting.fields; if f == p.name; sortable = true; end; end; end ~}}
+{{~ if sortable ~}}
+            <th>
+                {{~ # При клик на същата колона - превключваме посоката; при нова колона - тръгваме от asc. ~}}
+                <a asp-action="Index" asp-route-sortBy="{{ p.name }}"
+                   asp-route-sortDir="@(ViewData["SortBy"]?.ToString() == "{{ p.name }}" && ViewData["SortDir"]?.ToString() == "asc" ? "desc" : "asc")">
+                    @Html.DisplayNameFor(m => m.{{ p.name }})
+                    @if (ViewData["SortBy"]?.ToString() == "{{ p.name }}")
+                    { <span>@(ViewData["SortDir"]?.ToString() == "asc" ? "↑" : "↓")</span> }
+                    else { <span class="text-muted">⇅</span> }
+                </a>
+            </th>
+{{~ else ~}}
+            <th>@Html.DisplayNameFor(m => m.{{ p.name }})</th>
+{{~ end ~}}
+{{~ end ~}}
+{{~ end ~}}
+{{~ for rel in model.relations ~}}
+{{~ if rel.kind == "manyToOne" ~}}
+{{~
+rel_header = rel.navigation
+for tm in spec.models
+  if tm.name == rel.target && tm.display_name; rel_header = tm.display_name; end
+end
+~}}
+            <th>{{ rel_header }}</th>
+{{~ end ~}}
+{{~ end ~}}
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+{{~ for p in model.properties ~}}
+{{~ if !p.key && !p.foreign_key && !p.computed ~}}
+{{~ is_image = p.name | string.ends_with "Path" | string.upcase ~}}
+{{~ if is_image == "TRUE" ~}}
+                <td>
+                    @if (!string.IsNullOrEmpty(item.{{ p.name }}))
+                    {
+                        <img src="/@item.{{ p.name }}" alt="изображение" style="max-width: 100px; max-height: 100px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <img src="/images/product-default.svg" alt="няма снимка" style="max-width: 100px; max-height: 100px; object-fit: cover;" />
+                    }
+                </td>
+{{~ else ~}}
+                <td>@Html.DisplayFor(m => item.{{ p.name }})</td>
+{{~ end ~}}
+{{~ end ~}}
+{{~ end ~}}
+{{~ for rel in model.relations ~}}
+{{~ if rel.kind == "manyToOne" ~}}
+{{~
+# Показваме първото не-ключово string свойство на целевия модел (обикновено Name).
+target_display = "Id"
+for tm in spec.models
+  if tm.name == rel.target
+    for tp in tm.properties; if !tp.key && tp.type == "string" && target_display == "Id"; target_display = tp.name; end; end
+  end
+end
+# Реалният контролер за целевия модел в Admin (не гадаем множествено число).
+target_controller = null
+target_controller_spec = null
+for tc in spec.controllers
+  if tc.area == "Admin" && tc.model == rel.target; target_controller = tc.name | string.replace "Controller" ""; target_controller_spec = tc; end
+end
+# Details може да е премахнат (напр. модел с едно свойство - виж admin supervisor правилото) -
+# линкваме към Edit вместо това, вместо да сочим към несъществуващ маршрут (мъртва връзка).
+target_details_removed = false
+if target_controller_spec
+  for ra in target_controller_spec.removed_actions; if ra == "Details"; target_details_removed = true; end; end
+end
+target_action = "Details"
+if target_details_removed; target_action = "Edit"; end
+~}}
+                <td>
+{{~ if target_controller ~}}
+                    @if (item.{{ rel.navigation }} != null)
+                    {
+                        <a asp-area="Admin" asp-controller="{{ target_controller }}" asp-action="{{ target_action }}" asp-route-id="@item.{{ rel.navigation }}.Id">@item.{{ rel.navigation }}.{{ target_display }}</a>
+                    }
+{{~ else ~}}
+                    @item.{{ rel.navigation }}?.{{ target_display }}
+{{~ end ~}}
+                </td>
+{{~ end ~}}
+{{~ end ~}}
+                <td>
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.{{ model.properties[0].name }}">Редакция</a>
+{{~ if non_key_count > 1 && !details_removed ~}}
+                    <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@item.{{ model.properties[0].name }}">Детайли</a>
+{{~ end ~}}
+{{~ if model && model.images ~}}
+                    <a class="btn btn-sm btn-outline-primary" asp-area="Admin" asp-controller="{{ model.name }}Images" asp-action="Index" asp-route-id="@item.{{ model.properties[0].name }}">Снимки</a>
+{{~ end ~}}
+                    <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@item.{{ model.properties[0].name }}">Изтриване</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

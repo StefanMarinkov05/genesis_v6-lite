@@ -1,0 +1,37 @@
+@model {{ meta.root_namespace }}.Models.Catalogue
+@{
+    ViewData["Title"] = Model.Name;
+}
+{{~
+display = "Id"
+for tm in spec.models
+  if tm.name == primary
+    for tp in tm.properties; if !tp.key && tp.type == "string" && display == "Id"; display = tp.name; end; end
+  end
+end
+~}}
+
+<h1>@Model.Name</h1>
+<p><span class="badge bg-success">Публичен каталог</span></p>
+
+<ul class="list-group mb-3">
+    @if (!Model.Items.Any())
+    {
+        <li class="list-group-item text-muted">Празен каталог</li>
+    }
+    @foreach (var item in Model.Items.OrderBy(i => i.Position).ThenBy(i => i.Id))
+    {
+        <li class="list-group-item">
+            @if (item.{{ primary }} is not null)
+            {
+                <a asp-area="Client" asp-controller="Products" asp-action="Details" asp-route-id="@item.{{ primary }}.Id">@item.{{ primary }}.{{ display }}</a>
+            }
+            else
+            {
+                <span class="text-muted">(изтрита обява)</span>
+            }
+        </li>
+    }
+</ul>
+
+<a class="btn btn-secondary" asp-action="Public">Към публичните каталози</a>

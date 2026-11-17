@@ -1,0 +1,178 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+
+{{ ns_open (meta.root_namespace + ".Areas.Admin.Controllers") }}
+
+{{~
+lookup_models = []
+for m in spec.models; if m.is_lookup; lookup_models = lookup_models | array.add m; end; end
+
+specification_models = []
+for m in spec.models; if m.is_specification; specification_models = specification_models | array.add m; end; end
+
+review_model = null
+for m in spec.models; if m.name == "Review"; review_model = m; end; end
+has_feedback = features.rating && review_model != null
+
+# Distinct target models referenced by any lookup model's manyToOne relations, plus Review's
+# own target when feedback is enabled - single source for every filter dropdown's option data.
+filter_targets = []
+for m in lookup_models
+  for rel in m.relations
+    if rel.kind == "manyToOne"
+      already = false
+      for t in filter_targets; if t == rel.target; already = true; end; end
+      if !already; filter_targets = filter_targets | array.add rel.target; end
+    end
+  end
+end
+if has_feedback
+  for rel in review_model.relations
+    if rel.kind == "manyToOne"
+      already = false
+      for t in filter_targets; if t == rel.target; already = true; end; end
+      if !already; filter_targets = filter_targets | array.add rel.target; end
+    end
+  end
+end
+~}}
+/// <summary>
+/// Обединена страница "Спецификации" (Задача A5) - CRUD за атомарни справочни модели (без
+/// собствени външни ключове - напр. Марки/Категории), само-за-преглед таблици за малките
+/// join модели (предишна "Характеристики"), и обратна връзка (отзиви) - всичко с генерично
+/// филтриране по свързан запис/потребител/оценка. Атомарните модели използват СЪЩЕСТВУВАЩИТЕ
+/// scaffold-нати контролери за Create/Edit/Delete (тук само индексът); join моделите остават
+/// само за четене.
+/// </summary>
+[Area("Admin")]
+[Authorize(Roles = "{{ subst spec.identity.roles[0].name }}")]
+public class SpecificationsController : Controller
+{
+    private readonly {{ meta.project_name }}Context _context;
+
+    public SpecificationsController({{ meta.project_name }}Context context) => _context = context;
+
+{{~
+param_strs = []
+for m in lookup_models
+  mvar = m.name | string.downcase
+  for rel in m.relations
+    if rel.kind == "manyToOne"
+      param_strs = param_strs | array.add ("int? " + mvar + rel.navigation + "Id = null")
+    end
+  end
+  for p in m.properties
+    if p.name == "UserId" || (p.name | string.ends_with "UserId")
+      param_strs = param_strs | array.add ("string? " + mvar + p.name + " = null")
+    end
+  end
+end
+if has_feedback
+  for rel in review_model.relations
+    if rel.kind == "manyToOne"
+      param_strs = param_strs | array.add ("int? review" + rel.navigation + "Id = null")
+    end
+  end
+  for p in review_model.properties
+    if p.name == "UserId" || (p.name | string.ends_with "UserId")
+      param_strs = param_strs | array.add ("string? review" + p.name + " = null")
+    end
+  end
+  param_strs = param_strs | array.add "int? reviewStars = null"
+end
+~}}
+    public async Task<IActionResult> Index({{ param_strs | array.join ",\n        " }})
+    {
+        var vm = new SpecificationsViewModel();
+
+{{~ for m in specification_models ~}}
+        vm.{{ m.name }}s = await _context.{{ m.name }}s.AsNoTracking().ToListAsync();
+{{~ end ~}}
+
+{{~ for m in lookup_models ~}}
+{{~ mvar = m.name | string.downcase ~}}
+        var {{ mvar }}Query = _context.{{ m.name }}s.AsNoTracking()
+{{~ for rel in m.relations; if rel.kind == "manyToOne" ~}}
+            .Include(x => x.{{ rel.navigation }})
+{{~ end; end ~}}
+            .AsQueryable();
+{{~ for rel in m.relations ~}}
+{{~ if rel.kind == "manyToOne" ~}}
+        if ({{ mvar }}{{ rel.navigation }}Id.HasValue) {{ mvar }}Query = {{ mvar }}Query.Where(x => x.{{ rel.navigation }}Id == {{ mvar }}{{ rel.navigation }}Id);
+{{~ end ~}}
+{{~ end ~}}
+{{~ for p in m.properties ~}}
+{{~ if p.name == "UserId" || (p.name | string.ends_with "UserId") ~}}
+        if (!string.IsNullOrEmpty({{ mvar }}{{ p.name }})) {{ mvar }}Query = {{ mvar }}Query.Where(x => x.{{ p.name }} == {{ mvar }}{{ p.name }});
+{{~ end ~}}
+{{~ end ~}}
+        vm.{{ m.name }}s = await {{ mvar }}Query.ToListAsync();
+{{~ end ~}}
+
+{{~ if has_feedback ~}}
+        var reviewQuery = _context.Reviews.AsNoTracking().AsQueryable();
+{{~ for rel in review_model.relations ~}}
+{{~ if rel.kind == "manyToOne" ~}}
+        if (review{{ rel.navigation }}Id.HasValue) reviewQuery = reviewQuery.Where(x => x.{{ rel.navigation }}Id == review{{ rel.navigation }}Id);
+{{~ end ~}}
+{{~ end ~}}
+{{~ for p in review_model.properties ~}}
+{{~ if p.name == "UserId" || (p.name | string.ends_with "UserId") ~}}
+        if (!string.IsNullOrEmpty(review{{ p.name }})) reviewQuery = reviewQuery.Where(x => x.{{ p.name }} == review{{ p.name }});
+{{~ end ~}}
+{{~ end ~}}
+        if (reviewStars.HasValue) reviewQuery = reviewQuery.Where(x => x.Stars == reviewStars);
+        vm.Reviews = await reviewQuery.ToListAsync();
+        var reviewAuthorIds = vm.Reviews.Select(r => r.AuthorUserId).Distinct().ToList();
+        vm.ReviewAuthorNames = await _context.Users
+            .Where(u => reviewAuthorIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => {{ if has_first_name }}(string.IsNullOrEmpty(u.FirstName) ? u.Email : u.FirstName) ?? "Потребител"{{ else }}u.Email ?? "Потребител"{{ end }});
+{{~ end ~}}
+
+{{~ for target in filter_targets ~}}
+{{~
+target_display = "Id"
+for tm in spec.models
+  if tm.name == target
+    for tp in tm.properties
+      if !tp.key && !tp.foreign_key && tp.type == "string" && target_display == "Id" && tp.name != "UserId" && !(tp.name | string.ends_with "UserId")
+        target_display = tp.name
+      end
+    end
+  end
+end
+~}}
+        vm.{{ target }}Options = await _context.{{ target }}s.AsNoTracking().OrderBy(x => x.{{ target_display }}).ToListAsync();
+{{~ end ~}}
+{{~ if lookup_models.size > 0 || has_feedback ~}}
+        vm.UserOptions = await _context.Users.AsNoTracking()
+            .OrderBy(u => {{ if has_first_name }}u.FirstName ?? u.Email{{ else }}u.Email{{ end }})
+            .ToListAsync();
+{{~ end ~}}
+
+        return View(vm);
+    }
+}
+
+public sealed class SpecificationsViewModel
+{
+{{~ for m in specification_models ~}}
+    public List<{{ m.name }}> {{ m.name }}s { get; set; } = new();
+{{~ end ~}}
+{{~ for m in lookup_models ~}}
+    public List<{{ m.name }}> {{ m.name }}s { get; set; } = new();
+{{~ end ~}}
+{{~ if has_feedback ~}}
+    public List<Review> Reviews { get; set; } = new();
+    public Dictionary<string, string> ReviewAuthorNames { get; set; } = new();
+{{~ end ~}}
+{{~ for target in filter_targets ~}}
+    public List<{{ target }}> {{ target }}Options { get; set; } = new();
+{{~ end ~}}
+{{~ if lookup_models.size > 0 || has_feedback ~}}
+    public List<ApplicationUser> UserOptions { get; set; } = new();
+{{~ end ~}}
+}
+{{ ns_close }}

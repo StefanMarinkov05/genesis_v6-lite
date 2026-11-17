@@ -1,0 +1,97 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Models;
+
+{{~
+# Същата логика за "модел-обява" както във view model-а - гарантирано съвпадение.
+listing = ""
+for m in spec.models
+  has_uid = false
+  for p in m.properties; if p.name == "UserId"; has_uid = true; end; end
+  if has_uid && m.images; listing = m.name; end
+end
+~}}
+{{ ns_open (meta.root_namespace + ".Services") }}
+
+/// <summary>
+/// Събира публичното съдържание на един потребител в UserProfileViewModel.
+/// Един източник на истина за публичния профил (Задача 26) И админ детайла (Задача 7),
+/// за да не се дублира заявката на две места (и да не се разминава).
+/// </summary>
+public class UserProfileService
+{
+    private readonly {{ meta.project_name }}Context _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public UserProfileService({{ meta.project_name }}Context context, UserManager<ApplicationUser> userManager)
+    {
+        _context = context;
+        _userManager = userManager;
+    }
+
+    /// <summary>
+    /// Изгражда обобщението за <paramref name="userId"/>. Когато <paramref name="publicOnly"/>
+    /// е true (публична страница), каталозите се ограничават до публичните.
+    /// <paramref name="viewerUserId"/> е текущо логнатият посетител (null при анонимен достъп) -
+    /// служи само за IsOwnProfile/IsFollowedByViewer, не филтрира резултата.
+    /// Връща null, ако потребителят не съществува.
+    /// </summary>
+    public async Task<UserProfileViewModel?> BuildAsync(string userId, bool publicOnly, string? viewerUserId = null)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return null;
+
+        var vm = new UserProfileViewModel { User = user };
+{{~ if listing != "" ~}}
+        // Обяви на потребителя (глобалният soft-delete филтър скрива изтритите).
+        vm.Products = await _context.{{ listing }}s.AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Include(x => x.Images)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync();
+{{~ end ~}}
+{{~ if features.posts ~}}
+        vm.Posts = await _context.Posts.AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+{{~ end ~}}
+{{~ if features.rating ~}}
+{{~
+review_nav = null
+for rm in spec.models
+  if rm.name == "Review"
+    for rr in rm.relations; if rr.kind == "manyToOne" && review_nav == null; review_nav = rr.navigation; end; end
+  end
+end
+~}}
+        vm.Feedbacks = await _context.Reviews.AsNoTracking()
+{{~ if review_nav ~}}
+            .Include(r => r.{{ review_nav }})
+{{~ end ~}}
+            .Where(r => r.AuthorUserId == userId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+{{~ end ~}}
+{{~ if features.catalogues ~}}
+        vm.Catalogues = await _context.Catalogues.AsNoTracking()
+            .Where(c => c.UserId == userId && (!publicOnly || c.IsPublic))
+            .ToListAsync();
+{{~ end ~}}
+{{~ if features.follows ~}}
+        // Последователи: който следва ТОЗИ потребител. Следвани: които ТОЙ следва.
+        var followerIds = await _context.Follows.AsNoTracking()
+            .Where(f => f.FollowedUserId == userId).Select(f => f.FollowerUserId).ToListAsync();
+        var followingIds = await _context.Follows.AsNoTracking()
+            .Where(f => f.FollowerUserId == userId).Select(f => f.FollowedUserId).ToListAsync();
+        vm.Followers = await _userManager.Users.AsNoTracking()
+            .Where(u => followerIds.Contains(u.Id)).ToListAsync();
+        vm.Following = await _userManager.Users.AsNoTracking()
+            .Where(u => followingIds.Contains(u.Id)).ToListAsync();
+        vm.IsOwnProfile = viewerUserId == userId;
+        vm.IsFollowedByViewer = viewerUserId is not null && followerIds.Contains(viewerUserId);
+{{~ end ~}}
+        return vm;
+    }
+}
+{{ ns_close }}

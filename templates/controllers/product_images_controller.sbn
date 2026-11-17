@@ -1,0 +1,64 @@
+{{~
+# Admin controller for managing images of a model with images.mode = "multiple".
+# `model` is injected by EmitControllersViewsStage per model that has images.
+admin_role = ""
+for r in spec.identity.roles; if r.is_admin; admin_role = r.name; break; end; end
+display = "Id"
+for p in model.properties; if !p.key && !p.foreign_key && p.type == "string" && display == "Id"; display = p.name; end; end
+~}}
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using {{ meta.root_namespace }}.Data;
+using {{ meta.root_namespace }}.Models;
+using {{ meta.root_namespace }}.Services;
+
+{{ ns_open (meta.root_namespace + ".Areas.Admin.Controllers") }}
+
+[Area("Admin")]
+[Authorize(Roles = "{{ admin_role }}")]
+public class {{ model.name }}ImagesController : Controller
+{
+    private readonly {{ meta.project_name }}Context _context;
+    private readonly ImageService _imageService;
+
+    public {{ model.name }}ImagesController({{ meta.project_name }}Context context, ImageService imageService)
+    {
+        _context = context;
+        _imageService = imageService;
+    }
+
+    // GET: Admin/{{ model.name }}Images?id={parentId}
+    public async Task<IActionResult> Index(int id)
+    {
+        var item = await _context.{{ model.name }}s.FindAsync(id);
+        if (item is null) return NotFound();
+        ViewData["ParentId"] = id;
+        ViewData["ParentName"] = item.{{ display }};
+        var images = await _context.{{ model.name }}Images
+            .Where(i => i.{{ model.name }}Id == id)
+            .OrderBy(i => i.Id)
+            .ToListAsync();
+        return View(images);
+    }
+
+    // POST: Admin/{{ model.name }}Images/Upload?id={parentId}
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Upload(int id, IFormFileCollection files)
+    {
+        foreach (var file in files.Where(f => f.Length > 0))
+            await _imageService.Save{{ model.name }}ImageAsync(id, file);
+        return RedirectToAction(nameof(Index), new { id });
+    }
+
+    // POST: Admin/{{ model.name }}Images/DeleteImage?id={parentId}&imageId={imageId}
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteImage(int id, int imageId)
+    {
+        await _imageService.Delete{{ model.name }}ImageAsync(imageId);
+        return RedirectToAction(nameof(Index), new { id });
+    }
+}
+{{ ns_close }}
