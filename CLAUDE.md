@@ -30,7 +30,7 @@ Older sessions (1-21) live in `plan/state-archive.md`, split out to keep the aut
 | Tracking a specific bug/decision's history | `plan/decisions.md` |
 | About to write a changelog entry | `changelogs/README.md` (numbering + template convention) |
 | Looking up a CLI command, option, exit code or env var | `docs/reference/cli.md` |
-| Building the Architecture Handbook PDF | edition 2: `scripts/build-handbook2.py --lang en\|bg\|de\|xx\|trump` (sources `docs/handbook/`); edition 1: `scripts/build-handbook.py` (CI: `.github/workflows/handbook.yml`) |
+| Building the Architecture Handbook PDF | `scripts/build-handbook2.py --lang en\|bg\|de\|xx\|trump\|trump-bg` (sources `docs/handbook/`; CI `.github/workflows/handbook.yml` builds `en` and attaches it to releases); `scripts/build-handbook.py` = the shared LaTeX/Mermaid machinery (+ retired edition 1) |
 | Wondering what a source file does | `docs/reference/file-map.md` (generated — regenerate via `scripts/generate-file-map.ps1`) |
 | Fighting Scriban / Razor / EF migrations, or a recurring build trap | `docs/explanation/techniques.md` |
 | Adding a stage / a template | `docs/how-to/add-a-stage.md` / `docs/how-to/add-a-template.md` |

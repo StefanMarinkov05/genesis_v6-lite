@@ -569,6 +569,14 @@ judged by file name only.
 - Follow-up: once the `feature-templates/` → `templates/features/` move lands, sweep the path
   mentions in all editions. The cover's "Version" label is English in every edition.
 
+## Session 45 — handbook CI on edition 2, first release v6.6.6 (changelog 146)
+
+No release existed in either repo: no `v*` tag had ever been pushed. `handbook.yml` now builds the
+English edition 2 (`build-handbook2.py --lang en`) and attaches `dps-nn-handbook-v2.pdf` on a
+published release; edition 1 is no longer built in CI. Tagged `v6.6.6` on master: `release.yml`
+drafts the full installer here, the mirrored tag drafts the Lite installer in genesis_v6-lite.
+Drafts stay unpublished until the author reviews them.
+
 ## Session 44 — directory reorganization + dist tracked (changelog 145)
 
 Tier 1+2 approved, Tier 3 (one workspace/ dir) rejected — prompts/ out/ logs/ stay at root.

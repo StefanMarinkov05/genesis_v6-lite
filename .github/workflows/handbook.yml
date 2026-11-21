@@ -1,12 +1,13 @@
 name: Handbook PDF
 
-# Builds the Architecture Handbook from docs/ (Markdown + Mermaid stay the single source;
-# scripts/build-handbook.py only assembles and typesets). Every docs change on master yields a
-# downloadable artifact; publishing a GitHub release attaches the PDF to it.
+# Builds the English Architecture Handbook, edition 2 (sources docs/handbook/ plus the deep-dive
+# docs; scripts/build-handbook2.py --lang en, which reuses scripts/build-handbook.py's typesetting).
+# Every docs change on master yields a downloadable artifact; publishing a GitHub release attaches
+# the PDF to it (changelog 146). Edition 1 is retired; the translations are built locally.
 on:
   push:
     branches: [master]
-    paths: ["docs/**", "scripts/build-handbook.py", ".github/workflows/handbook.yml", "VERSION"]
+    paths: ["docs/**", "scripts/build-handbook.py", "scripts/build-handbook2.py", ".github/workflows/handbook.yml", "VERSION"]
   release:
     types: [published]
   workflow_dispatch:
@@ -36,15 +37,15 @@ jobs:
             texlive-pictures lmodern fonts-ibm-plex fonts-dejavu
 
       - name: Build handbook
-        run: python3 scripts/build-handbook.py --out dist/dps-nn-handbook.pdf
+        run: python3 scripts/build-handbook2.py --lang en
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dps-nn-handbook
-          path: dist/dps-nn-handbook.pdf
+          name: dps-nn-handbook-v2
+          path: dist/dps-nn-handbook-v2.pdf
 
       - name: Attach to release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/dps-nn-handbook.pdf --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/dps-nn-handbook-v2.pdf --clobber

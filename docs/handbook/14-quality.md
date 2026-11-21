@@ -92,7 +92,7 @@ The full policy, including what "done" means for a change, is `docs/explanation/
 |---|---|---|
 | `ci.yml` → build-and-test | Windows, every push/PR to master | `dotnet build` + `dotnet test` on the solution |
 | `ci.yml` → gui-test | Windows | typecheck, electron-vite build (all three targets), `node --test` |
-| `handbook.yml` | docs changes, releases, manual | the first edition of this book (assembled from `docs/`) builds; on a release it is attached. This edition is built locally with `scripts/build-handbook2.py` |
+| `handbook.yml` | docs changes, releases, manual | this book, in English (`scripts/build-handbook2.py --lang en`), builds; on a release it is attached. The translations are built locally |
 | `release.yml` | version tags | the Windows installer is produced |
 | `lite-mirror.yml` | master pushes and tags | the music-free edition is rebuilt and pushed |
 
