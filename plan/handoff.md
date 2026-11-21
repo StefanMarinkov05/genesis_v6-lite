@@ -38,7 +38,7 @@ section first — it should say "Idle" if nothing was left mid-flight.
   a joke "performance notice" popup on Start click. VERIFIED via extensive real-app screenshot
   testing across many rounds (not just tsc/build — actual on-screen behavior, including a genuine
   multi-round root-cause debugging session for a text-rendering bug). Changelogs 128-129.
-- `plan/v6-task-breakdown.md` (Packages A-K): all items done as of changelog 101 — do not
+- `plan/archive/v6-task-breakdown.md` (Packages A-K): all items done as of changelog 101 — do not
   re-propose any of those as "missing," they're shipped.
 - `plan/tasks.md`'s only unchecked line: an optional "Claude CI step" idea, explicitly never committed
   to. Not a blocker for anything.

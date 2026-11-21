@@ -1,5 +1,7 @@
 <!-- last-verified: 33c4fd4265056f5f769086261ff358cad3d31c5d -->
-# ADR-012: "Спецификации" consolidation (two flavours) + a generic admin filter convention
+# ADR-012: Specifications page consolidation (two flavours) + a generic admin filter convention
+
+*The page is labelled "Спецификации" (Bulgarian for "Specifications") in the generated apps' UI.*
 
 **Status**: accepted (design); not yet implemented
 

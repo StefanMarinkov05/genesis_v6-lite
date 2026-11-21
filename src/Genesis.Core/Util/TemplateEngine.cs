@@ -72,6 +72,11 @@ public sealed class TemplateEngine(ProjectSpec spec, ResolvedVariation variation
         foreach (var (fname, cfg) in spec.Features)
             features.SetValue(fname, cfg.TryGetProperty("enabled", out var en) && en.GetBoolean(), true);
         so.SetValue("features", features, true);
+        // The cart surface (CartController Index/Add/Remove, badge, add-to-cart buttons) exists with
+        // either feature; checkout and order history stay on features.orders (changelog 141).
+        bool On(string f) => spec.Features.TryGetValue(f, out var c)
+            && c.TryGetProperty("enabled", out var e) && e.GetBoolean();
+        so.SetValue("has_cart", On("cart") || On("orders"), true);
 
         // Deterministic dependency order for seed emission - any model whose manyToOne
         // targets are earlier in this list is guaranteed insertable in one linear pass
@@ -148,10 +153,12 @@ public sealed class TemplateEngine(ProjectSpec spec, ResolvedVariation variation
         var names = presets.EnumerateObject().Select(p => p.Name).ToList();
         if (names.Count == 0) return null;
 
-        // explicit choice, else deterministic pick from the variation seed
+        // Explicit choice, else the same SHA256(seed:axis) pick the variation axes use (ADR-004),
+        // under the axis name "designPreset". Never string.GetHashCode(): it is randomised per
+        // process, so an unpinned preset used to change between runs of one spec (changelog 141).
         var chosen = spec.Meta.Style.Preset is { Length: > 0 } pr && names.Contains(pr)
             ? pr
-            : names[Math.Abs(variation.Seed.GetHashCode()) % names.Count];
+            : names[VariationResolver.DeterministicIndex(variation.Seed, "designPreset", names.Count)];
 
         var node = presets.GetProperty(chosen);
         var map = node.EnumerateObject().ToDictionary(x => x.Name, x => x.Value.GetString() ?? "");

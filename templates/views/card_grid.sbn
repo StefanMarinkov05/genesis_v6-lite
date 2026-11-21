@@ -102,7 +102,7 @@ first = true
                     }
 {{~ end ~}}
 {{~ end ~}}
-{{~ if features.orders ~}}
+{{~ if has_cart ~}}
                     @if (User.Identity?.IsAuthenticated == true)
                     {
                         <form asp-area="Client" asp-controller="Cart" asp-action="Add" asp-route-itemId="@item.{{ model.properties[0].name }}" method="post" class="d-inline">

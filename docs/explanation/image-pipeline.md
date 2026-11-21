@@ -23,7 +23,7 @@ All three are verified against the real code, not assumed:
    today** at layout nav, public profile, user details, and both profile-content partial sites.
 
 3. **The generic fallbacks don't exist.** `/images/avatar-default.png` is referenced by 5 views
-   but is **never emitted** (the repo `images/` folder holds only a README) — so the fallback is
+   but is **never emitted** (the repo `templates/static/` folder holds only a README) — so the fallback is
    a 404. There is no product fallback at all; on download failure `DownloadImageAsync` writes a
    1×1 transparent PNG (visible as a broken tile, not a real placeholder).
 
@@ -50,11 +50,11 @@ image is intentionally stable; adding invalidation is scope the workload doesn't
 
 ### 2. Shipped generic fallbacks — as SVG, not binary PNG
 
-Author real fallback assets in the repo `images/` drop-folder, **as SVG text files**, not
+Author real fallback assets in the repo `templates/static/` drop-folder, **as SVG text files**, not
 binaries:
 
-- `images/avatar-default.svg` — neutral silhouette avatar.
-- `images/product-default.svg` — neutral product placeholder.
+- `templates/static/avatar-default.svg` — neutral silhouette avatar.
+- `templates/static/product-default.svg` — neutral product placeholder.
 
 SVG is chosen deliberately: it renders in `<img>`, is scalable, tiny, text-diffable, and
 version-controllable — a generator repo should not carry hand-authored binary PNGs when a text
@@ -98,7 +98,7 @@ Run it in `ScaffoldStage` (right after `dotnet new mvc` creates `wwwroot`), idem
   requirement are unchanged.
 - **Seed data**: PFP leaves the seed surface entirely (it was always identity-seeder-generated,
   not in `seed-response.json`). Product image rows are unchanged.
-- **Repo assets**: adds `images/avatar-default.svg`, `images/product-default.svg`, and a
+- **Repo assets**: adds `templates/static/avatar-default.svg`, `templates/static/product-default.svg`, and a
   gitignored `.image-cache/`.
 - **Verify**: the extra `wwwroot/images/*.svg` copy and the cache are inert to the language gate
   and manifest checks. No `VerifyStage` change expected, but confirm the manifest's expected-file
@@ -108,7 +108,7 @@ Run it in `ScaffoldStage` (right after `dotnet new mvc` creates `wwwroot`), idem
 
 1. `SeedStage.DownloadImageAsync` — cache-dir resolution + copy-through; drop the 1×1 fallback.
 2. `.gitignore` — add `.image-cache/`.
-3. `images/avatar-default.svg`, `images/product-default.svg` — author the two assets.
+3. `templates/static/avatar-default.svg`, `templates/static/product-default.svg` — author the two assets.
 4. `ScaffoldStage` — `CopyStaticAssets` step.
 5. `identity_seeder.sbn` — seed `ProfilePicturePath = null`.
 6. The 5 avatar render sites — unify on the `.svg` fallback form; drop the `http` guard.

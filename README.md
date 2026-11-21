@@ -1,13 +1,13 @@
 <!-- last-verified: f624752 -->
-# ДПС-НН (dps-nn)
+# ДПС-НН (dps-nn) — lite edition
 
-> **Lite edition.** The same code as [StefanMarinkov05/genesis_v6](https://github.com/StefanMarinkov05/genesis_v6), minus the
-> ~1 GB of music the GUI's IMPERATOR theme can play. Mirrored automatically from there on every
-> push - please open issues and pull requests in the full repo.
+> This is the **lite edition**: the full code of [StefanMarinkov05/genesis_v6](https://github.com/StefanMarinkov05/genesis_v6) without the
+> ~1 GB of music its GUI can play — small to clone, no Git LFS. It is mirrored automatically on
+> every push to the full repo; please open issues and pull requests there.
 
 **Describe a web app in a paragraph — get a complete, seeded, verified ASP.NET Core 10 MVC application.**
 
-[![CI](https://github.com/StefanMarinkov05/genesis_v6/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/StefanMarinkov05/genesis_v6/actions/workflows/ci.yml)
+[![CI](https://github.com/StefanMarinkov05/genesis_v6-lite/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/StefanMarinkov05/genesis_v6-lite/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)
 ![Electron](https://img.shields.io/badge/GUI-Electron-47848F)
@@ -19,8 +19,8 @@ paste a plain-language description and let Claude write it: the agent runs the g
 what failed, fixes the spec and tries again.
 
 It was built as a sample-project factory for a university software course: every generated app
-must build, migrate, boot, log in, render every page, and contain no leftover English — or the run
-fails. The internal namespace is still `Genesis.*` (the project's original name; see ADR-009).
+must build, migrate, boot, log in, and show no leftover English on the pages it fetches — or the run
+fails. The internal name is still Genesis, the project's original name: source folders `src/Genesis.*`, namespaces `GenesisV6.*` (see ADR-009).
 
 ```mermaid
 flowchart LR
@@ -128,7 +128,7 @@ All commands, options, exit codes and environment variables: [`docs/reference/cl
 | 5 | `identity` | ASP.NET Identity scaffold, Bulgarian error describer and pages, roles, seed users |
 | 6 | `emit-controllers-views` | scaffolded + templated controllers and views, declarative deviations |
 | 7 | `seed` | seed rows (LLM or file) with symbolic references, images, migrations |
-| 8 | `verify` | build → migrate → boot → login → every route → English-leak scan |
+| 8 | `verify` | build → migrate → boot → declared routes → anonymous refusal → login → English-leak scan |
 | 9 | `report` | `wwwroot/output/project-summary.json` with code pointers |
 
 Diagram, gate order and resume semantics: [`docs/reference/control-flow.md`](docs/reference/control-flow.md).
@@ -140,23 +140,81 @@ src/Genesis.Core/     pipeline engine: spec model, stages, LLM bridge, agent loo
 src/Genesis.Cli/      the dps-nn command line
 tests/Genesis.Tests/  xUnit suite
 templates/            Scriban templates rendered into generated apps
-feature-templates/    reusable feature fragments (cart, posts, catalogues, orders, rating, follows…)
+templates/features/   reusable feature fragments (cart, posts, catalogues, orders, rating, follows…)
+templates/static/     fallback avatar/product images copied into every generated app
 fixtures/             the FaceNote sample spec;  seeds/  its seed data
 spec.schema.json      JSON Schema for project-spec.json (source of truth)
 gui/                  Electron desktop app over the CLI
-docs/                 tutorial, reference, how-to, explanation, ADRs
-design/               GUI themes, backgrounds, icon, music
+docs/                 tutorial, reference, how-to, explanation, ADRs; handbook/ = handbook sources (English)
+dist/                 the built English Architecture Handbook PDFs
+design/               GUI themes, backgrounds, icon (the music is in the full edition only)
 ```
+
+## Personalization
+
+The GUI is made to be re-skinned: wallpapers, colors, logos, music and the footer are all files you
+can swap. Changes under `gui/src/` show up in `npm run dev` (in `gui/`); build your own installer
+with `npm run dist`. Music and the footer are read at runtime, so they need no rebuild at all.
+
+**Wallpapers and themes.** A wallpaper is a theme (colors, fonts, panel style) plus an optional skin
+and a background image. Five themes ship — NOVA, IMPERATOR, VEIL, FORGE, ENCHANT — with ten
+wallpapers. To add your own:
+
+1. Put the image in `gui/src/renderer/public/backgrounds/` (`design/backgrounds/` keeps the originals).
+2. In `gui/src/renderer/styles.css`, add a skin that points at it and, if you like, recolors the accent:
+   ```css
+   [data-theme="nova"][data-skin="mine"] {
+     --canvas-image: url("/backgrounds/mine.png");
+     --accent: #ff7a3f; --accent-2: #ffa070; --glow: #ff7a3faa;
+   }
+   ```
+3. Register it in `WALLPAPERS` in `gui/src/renderer/themes.ts`
+   (`{ id: 'nova-mine', theme: 'nova', skin: 'mine', labelKey: 'novaMine' }`), add `'novaMine'` to
+   the `labelKey` type, and give it a label in each language table under `gui/src/renderer/i18n/` —
+   `npm run typecheck` lists any table you missed.
+
+A whole new theme is a new `ThemeId` with its own `[data-theme="…"]` token block; the token set and
+the rules every theme keeps (contrast floors, shared geometry) are in
+[`design/design-specs.md`](design/design-specs.md).
+
+**Logos and icons.** Replace the file, keep the name — all in `gui/src/renderer/public/logo/`:
+
+| File | Shows as |
+|---|---|
+| `logo.png` | the watermark behind the main panel (hidden on IMPERATOR, whose art brands itself) |
+| `logo-hell.png` | the watermark on FORGE |
+| `icon.png` | the small titlebar icon |
+| `loading.png` | the boot splash |
+
+The window, taskbar and installer icon is `gui/resources/icon.ico`. `design/app-icon/` keeps the
+originals. `logo.png` is also the logo at the top of this README and on the handbook's cover.
+
+**Music.** The IMPERATOR wallpapers show a music picker that plays whatever is in `design/music/`:
+`.mp3` files in `songs-audio/` and `concerts-audio/`, `.mp4` / `.webm` / `.mov` in
+`concerts-video/`. The lite edition ships no recordings: in the repo the folders are
+empty, in an installed copy create them, then drop your own files in. The folder is read each
+time you pick, so new files appear without a restart.
+In an installed copy the same folders are under
+`%LOCALAPPDATA%\Programs\DPS-NN\resources\genesis\design\music\` (the default per-user install
+location) — an update replaces that folder, so keep your own copies. The picker's button text is
+`music.button` in the language tables.
+
+**Footer.** `design/footer.md` is the text at the bottom of the window, read at runtime; edit it, or
+empty it to show nothing. Installed: `resources\genesis\design\footer.md` in the install folder.
 
 ## Documentation
 
-Start with the [tutorial](docs/01-tutorial-genesis.md). Then, by need:
+Start with the [tutorial](docs/tutorial/genesis.md). Then, by need:
 
 - **Reference** — [CLI](docs/reference/cli.md) · [pipeline & control flow](docs/reference/control-flow.md) · [spec format](docs/reference/spec-format.md) · [file map](docs/reference/file-map.md)
-- **Explanation** — [architecture decisions](docs/explanation/architecture-decisions.md) (indexes all 15 [ADRs](docs/adr/)) · [agent mode](docs/explanation/agent-mode.md) · [GUI architecture](docs/explanation/gui-architecture.md) · [image pipeline](docs/explanation/image-pipeline.md) · [techniques & traps](docs/explanation/techniques.md)
+- **Overview** — [the project at a glance](docs/explanation/project-overview.md): specs, decisions, and a briefing for agents
+- **Explanation** — [architecture decisions](docs/explanation/architecture-decisions.md) (indexes all 15 [ADRs](docs/adr/)) · [agent mode](docs/explanation/agent-mode.md) · [GUI architecture](docs/explanation/gui-architecture.md) · [image pipeline](docs/explanation/image-pipeline.md) · [techniques & traps](docs/explanation/techniques.md) · [testing policy](docs/explanation/testing-policy.md)
 - **How-to** — [add a stage](docs/how-to/add-a-stage.md) · [add a template](docs/how-to/add-a-template.md) · [build the installer](docs/how-to/build-the-installer.md) · [the lite mirror](docs/how-to/mirror-the-lite-edition.md)
 
 The same docs are built into a single **Architecture Handbook PDF** by CI (`scripts/build-handbook.py`).
+A second, re-authored edition lives in `docs/handbook/` (`scripts/build-handbook2.py --lang en`).
+The English PDF, `dps-nn-handbook-v2.pdf`, is committed in [`dist/`](dist/); the translated editions are in the
+[full repository](https://github.com/StefanMarinkov05/genesis_v6/tree/master/dist).
 Contributors and AI agents: `CLAUDE.md` routes each task to the right doc; `plan/` holds the
 working history.
 
@@ -169,5 +227,5 @@ Vite · xterm.js · GitHub Actions
 ## License
 
 Code and documentation: [MIT](LICENSE) © 2026 Stefan Marinkov.
-The recordings under `design/music/` are third-party works and are **not** covered by the MIT
-license; all rights remain with their respective owners.
+This edition contains no third-party recordings; the GUI's music player stays empty. (The full
+edition's recordings are not covered by the MIT license — see [StefanMarinkov05/genesis_v6](https://github.com/StefanMarinkov05/genesis_v6).)

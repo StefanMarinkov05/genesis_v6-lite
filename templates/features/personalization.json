@@ -1,0 +1,6 @@
+{
+  "_comment": "Feature 'personalization' injects no models: it gates the signed-in user's personal surface in the layout (templates/views/layout.sbn) - greeting by first name, avatar when the user model has ProfilePicturePath, and a link to the user's own public profile when posts or catalogues are on (changelog 141).",
+  "models": [],
+  "dtos": [],
+  "controllers": []
+}

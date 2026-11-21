@@ -34,6 +34,12 @@ design/music/concerts-audio/*
 design/music/concerts-video/*
 !design/music/*/.gitkeep
 
-# Handbook PDF build (scripts/build-handbook.py): intermediates + output
+# Handbook PDF build intermediates (scripts/build-handbook*.py). The PDFs themselves in dist/ ARE
+# tracked in the full repo; the lite mirror keeps only the English ones (scripts/lite-tree.py).
 /build/
-/dist/
+
+# Playwright MCP browser-session console logs
+.playwright-mcp/
+
+# Python bytecode (scripts/ import each other)
+__pycache__/

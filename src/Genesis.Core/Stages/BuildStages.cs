@@ -136,13 +136,13 @@ public sealed class ScaffoldStage : IStage
     }
 
     // Ships the generic image fallbacks (ADR-011): avatar-default.svg / product-default.svg,
-    // authored once in the repo's images/ drop folder, copied into every generated project's
+    // authored once in the repo's templates/static/ folder, copied into every generated project's
     // wwwroot/images/ so the fallback <img> sources the views already reference actually
     // resolve instead of 404ing. Overwrite-safe (File.Copy overwrite:true) so a re-run after
     // an asset update always picks up the latest version.
     private static void CopyStaticAssets(StageContext ctx)
     {
-        var srcDir = Path.Combine(ctx.GenesisRoot, "images");
+        var srcDir = Path.Combine(ctx.GenesisRoot, "templates", "static");
         if (!Directory.Exists(srcDir)) return;
         var destDir = Path.Combine(ctx.ProjectDir, "wwwroot", "images");
         Directory.CreateDirectory(destDir);

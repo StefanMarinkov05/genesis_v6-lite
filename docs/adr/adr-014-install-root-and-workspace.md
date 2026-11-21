@@ -4,7 +4,7 @@
 **Status**: accepted (changelog 134)
 
 **Context**: Until the Windows installer, dps-nn only ever ran from a repo checkout, where one
-folder played two roles: the CLI read `templates/`, `spec.schema.json`, `feature-templates/` from
+folder played two roles: the CLI read `templates/`, `spec.schema.json`, `templates/features/` from
 its `GenesisRoot()`, and wrote `logs/`, `prompts/`, `out/`, the image cache and the spec's
 `.lock.json` relative to its cwd — and the GUI (ADR-010) always spawned it with cwd = that same
 root. An installed app cannot work that way: the install directory is the program's, it may be
@@ -13,7 +13,7 @@ The CLI also ran as `dotnet run --project src/Genesis.Cli`, which needs the sour
 
 **Decision**: Two roots, kept apart everywhere.
 - **Install root** (read-only): `<install>\resources\genesis\` — a self-contained single-file
-  `dps-nn.exe` next to `templates/`, `feature-templates/`, `spec.schema.json`, `images/`, the
+  `dps-nn.exe` next to `templates/` (with `features/` and `static/` inside), `spec.schema.json`, the
   spec-authoring guide, the FaceNote sample spec + seed, `design/footer.md`, and (full edition
   only) `design/music/`. The CLI finds it through `AppContext.BaseDirectory` — the lookup
   `GenesisRoot()` already tried first — so the CLI needed no install-mode flag.

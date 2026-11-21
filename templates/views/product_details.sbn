@@ -84,7 +84,7 @@ end
 {{~ end ~}}
 {{~ end ~}}
         </dl>
-{{~ if features.orders ~}}
+{{~ if has_cart ~}}
         @if (User.Identity?.IsAuthenticated == true)
         {
             <form asp-area="Client" asp-controller="Cart" asp-action="Add" method="post" class="mt-3">

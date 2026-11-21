@@ -3,7 +3,7 @@
 
 **Status**: accepted (design); not yet implemented
 
-**Context**: 6.5.0 (`plan/dps-nn-6.5.0-spec.md`) adds a desktop GUI. Genesis is an existing headless
+**Context**: 6.5.0 (`plan/archive/dps-nn-6.5.0-spec.md`) adds a desktop GUI. Genesis is an existing headless
 .NET pipeline with ~90% of the relevant logic already in place. The two hardest required features —
 a live debug terminal and streamed process output — plus a 5-theme animated aesthetic, all favour a
 web-shell stack. Decision log #1 already resolved the stack to Electron.

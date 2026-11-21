@@ -14,9 +14,12 @@ namespace GenesisV6.Core.Stages;
 ///  1. clean `dotnet build`
 ///  2. `ef database update` clean
 ///  3. app boots (kestrel on a random free port)
-///  4. HTTP 200 on `/`; every discovered public route (cardGrids) anonymously, then a
-///     real form login as the seeded admin (antiforgery token + cookie jar) and every
-///     discovered authed route (adminTables + each enabled Client-area feature page)
+///  4. HTTP 200 on `/`; every discovered public route (cardGrids) anonymously; every protected
+///     route (admin-area adminTables + [Authorize] feature pages) must REFUSE an anonymous
+///     request; then a real form login as the seeded admin (antiforgery token + cookie jar)
+///     and every discovered authed route (adminTables + each enabled Client-area feature page).
+///     Every declared route must answer 200 - a non-200 is a hard failure (changelog 141;
+///     before that it was logged and skipped, so a broken declared page could pass verify).
 ///  5. spec file manifest is a subset of actual files
 ///  6. zero English strings in rendered HTML of EVERY page fetched above (B4: whole route
 ///     surface, not one-per-kind) - visible-text heuristic + allowlist; report written either way
@@ -59,23 +62,47 @@ public sealed class VerifyStage : IStage
             pagesToCheck.Add(("/", await MustGet200Async(http, "/", ct)));
 
             // B4: scan the whole discovered route surface, not just one page per kind.
-            var (publicRoutes, authedRoutes) = DiscoverRoutes(spec);
+            var (publicRoutes, authedRoutes, refuseAnonymous) = DiscoverRoutes(spec);
+            var failures = new List<string>();
 
             // Public routes (every cardGrid) - anonymous.
             foreach (var r in publicRoutes)
-                if (await TryGetAsync(http, r, ct, ctx) is { } html) pagesToCheck.Add((r, html));
+                if (await TryGetAsync(http, r, failures, ct) is { } html) pagesToCheck.Add((r, html));
+
+            // Protected routes must refuse an anonymous request (401/403 or a redirect to the
+            // login page). Own client: no cookies, no auto-redirect, so the refusal itself is seen.
+            using (var anon = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
+                   { BaseAddress = new Uri(url), Timeout = TimeSpan.FromSeconds(30) })
+                foreach (var r in refuseAnonymous)
+                {
+                    try
+                    {
+                        using var resp = await anon.GetAsync(r, ct);
+                        if (!IsAnonymousRefusal(resp.StatusCode, resp.Headers.Location))
+                            failures.Add($"{r}: an anonymous request was not refused (HTTP {(int)resp.StatusCode})");
+                    }
+                    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+                    { failures.Add($"{r}: anonymous request failed ({ex.Message})"); }
+                }
 
             // Authenticated routes (every adminTable + each enabled Client-area feature page):
-            // real form login as the seeded admin, then best-effort fetch of each.
+            // real form login as the seeded admin, then every one must answer 200.
             var admin = spec.Identity?.SeedUsers?.Users.FirstOrDefault(u =>
                 spec.Identity.Roles.Any(r => r.IsAdmin && r.Name == u.Role));
-            if (admin is not null && authedRoutes.Count > 0)
+            if (authedRoutes.Count > 0)
             {
+                if (admin is null)
+                    throw new InvalidOperationException(
+                        "verify: the spec declares admin/feature pages but no seed user has an admin role, so they cannot be checked");
                 await LoginAsync(http, admin.Email,
                     admin.Password ?? ctx.Variation.SeedPassword(admin.Email), ct);
                 foreach (var r in authedRoutes)
-                    if (await TryGetAsync(http, r, ct, ctx) is { } html) pagesToCheck.Add((r, html));
+                    if (await TryGetAsync(http, r, failures, ct) is { } html) pagesToCheck.Add((r, html));
             }
+
+            if (failures.Count > 0)
+                throw new InvalidOperationException(
+                    $"verify: {failures.Count} declared route(s) failed:\n - " + string.Join("\n - ", failures));
 
             // 6 - English leak scan over everything just fetched. This gate exists specifically
             // to enforce the Bulgarian-only-UI requirement - it would be nonsensical (and would
@@ -157,44 +184,77 @@ public sealed class VerifyStage : IStage
     ];
 
     /// <summary>
-    /// B4: the full route surface for the language gate, split by auth requirement and deduped
-    /// (order-stable). public = every cardGrid page (anonymous-reachable); authed = every adminTable
-    /// route plus one landing route per enabled Client-area feature (all [Authorize], all Bulgarian UI).
-    /// Feature routes are best-effort at fetch time, so a mis-derived route warns rather than fails verify.
+    /// B4: the full route surface, split by auth requirement and deduped (order-stable).
+    /// Public = every cardGrid page (anonymous-reachable). Authed = every adminTable route plus one
+    /// landing route per enabled Client-area feature (fetched as the admin). RefuseAnonymous =
+    /// the routes an anonymous request must be refused on: adminTable pages in an area mapped to
+    /// an admin role, plus the feature pages whose controller is [Authorize] at class level (Cart,
+    /// Catalogues, Follows - NOT Posts, whose index is public). Every route must answer 200; a
+    /// non-200 fails verify (changelog 141), so these routes must match what the templates emit.
     /// </summary>
-    internal static (List<string> Public, List<string> Authed) DiscoverRoutes(ProjectSpec spec)
+    internal static (List<string> Public, List<string> Authed, List<string> RefuseAnonymous) DiscoverRoutes(ProjectSpec spec)
     {
         var pub = new List<string>();
         var authed = new List<string>();
+        var refuse = new List<string>();
         void Add(List<string> to, string r) { if (!to.Contains(r)) to.Add(r); }
 
         foreach (var p in spec.Views?.Pages ?? [])
         {
             if (p.Kind == "cardGrid") Add(pub, ViewFileToRoute(p.File));
-            else if (p.Kind == "adminTable") Add(authed, ViewFileToRoute(p.File));
+            else if (p.Kind == "adminTable")
+            {
+                var route = ViewFileToRoute(p.File);
+                Add(authed, route);
+                var parts = p.File.Split('/');
+                if (parts.Length > 1 && parts[0] == "Areas" && EmitControllersViewsStage.IsAdminArea(spec, parts[1]))
+                    Add(refuse, route);
+            }
         }
 
-        if (EmitControllersViewsStage.FeatureEnabled(spec, "orders"))
-        { Add(authed, "/Client/Cart"); Add(authed, "/Client/Cart/Orders"); }
+        var orders = EmitControllersViewsStage.FeatureEnabled(spec, "orders");
+        if (orders || EmitControllersViewsStage.FeatureEnabled(spec, "cart"))
+        { Add(authed, "/Client/Cart"); Add(refuse, "/Client/Cart"); }
+        if (orders)
+        { Add(authed, "/Client/Cart/Orders"); Add(refuse, "/Client/Cart/Orders"); }
         if (EmitControllersViewsStage.FeatureEnabled(spec, "posts")) Add(authed, "/Client/Posts");
-        if (EmitControllersViewsStage.FeatureEnabled(spec, "follows")) Add(authed, "/Client/Follows/List");
+        if (EmitControllersViewsStage.FeatureEnabled(spec, "follows"))
+        { Add(authed, "/Client/Follows/List"); Add(refuse, "/Client/Follows/List"); }
         if (EmitControllersViewsStage.FeatureEnabled(spec, "catalogues"))
-        { Add(pub, "/Client/Catalogues/Public"); Add(authed, "/Client/Catalogues"); }
+        { Add(pub, "/Client/Catalogues/Public"); Add(authed, "/Client/Catalogues"); Add(refuse, "/Client/Catalogues"); }
 
-        return (pub, authed);
+        return (pub, authed, refuse);
     }
 
-    /// <summary>GET that returns page HTML on 200, else logs why and returns null (non-fatal for the gate).</summary>
-    private static async Task<string?> TryGetAsync(HttpClient http, string path, CancellationToken ct, StageContext ctx)
+    /// <summary>
+    /// What counts as "refused" for an anonymous request: 401, 403, or a redirect to the Identity
+    /// login / access-denied page (cookie auth's normal challenge). A 200 is a leak; a 404/500 or
+    /// a redirect anywhere else is not a refusal either - the page is broken or misrouted.
+    /// </summary>
+    internal static bool IsAnonymousRefusal(HttpStatusCode status, Uri? location)
+    {
+        if (status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) return true;
+        if ((int)status is >= 300 and < 400 && location is not null)
+        {
+            var target = location.IsAbsoluteUri ? location.PathAndQuery : location.OriginalString;
+            return target.Contains("/Account/Login", StringComparison.OrdinalIgnoreCase)
+                || target.Contains("/Account/AccessDenied", StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
+    }
+
+    /// <summary>GET that returns page HTML on 200; anything else is recorded in <paramref name="failures"/>.</summary>
+    private static async Task<string?> TryGetAsync(HttpClient http, string path, List<string> failures, CancellationToken ct)
     {
         try
         {
-            var resp = await http.GetAsync(path, ct);
+            using var resp = await http.GetAsync(path, ct);
             if (resp.StatusCode == HttpStatusCode.OK)
                 return await resp.Content.ReadAsStringAsync(ct);
-            ctx.Info($"verify: language scan skipping {path} (HTTP {(int)resp.StatusCode})");
+            failures.Add($"{path}: HTTP {(int)resp.StatusCode}");
         }
-        catch (Exception ex) { ctx.Info($"verify: language scan could not fetch {path} ({ex.Message})"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        { failures.Add($"{path}: could not fetch ({ex.Message})"); }
         return null;
     }
 

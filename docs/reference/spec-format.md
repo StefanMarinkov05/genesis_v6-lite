@@ -5,7 +5,7 @@
 [`spec.schema.json`](../../spec.schema.json) — JSON Schema, `additionalProperties: false`
 everywhere, so an unknown key is a hard validation error, never silently ignored. This doc explains
 the concept groups and the non-obvious resolution mechanisms; it does **not** enumerate every field
-(that would duplicate and rot against the schema — see `plan/task-a-doc-architecture.md` decision
+(that would duplicate and rot against the schema — see `plan/archive/task-a-doc-architecture.md` decision
 D3). When schema and prose ever disagree, the schema wins.
 
 ## The three files, and which one you write
@@ -52,7 +52,9 @@ Per ADR-001, a spec passes through three files with three different owners:
 - **`features`** — optional, reusable fragments (cart, posts, catalogues, orders, rating,
   follows...) toggled with `enabled: true`. See "Feature expansion" below.
 - **`seeding`** — how the `seed` stage generates rows (LLM vs manual), image sourcing, and the FK
-  strategy (always symbolic refs — ADR-003).
+  strategy (always symbolic refs — ADR-003). The rows themselves are the **second input**, a separate
+  JSON validated against a schema derived from this section — see
+  [seed format](seed-format.md).
 - **`outputReport`** — which `codePointer`s the `report` stage resolves into
   `wwwroot/output/project-summary.json` for the downstream documentation tooling.
 
@@ -69,7 +71,7 @@ once, at expand time; nothing downstream re-interprets the placeholder syntax.
 ### Feature expansion (`$primaryModel`)
 
 An enabled entry under `features` (`{"enabled": true}`, optionally with a `model` override) merges
-a whole fragment of models/controllers/views from `feature-templates/<name>.json` into the spec at
+a whole fragment of models/controllers/views from `templates/features/<name>.json` into the spec at
 expand time. A fragment's relations may reference the literal token `"$primaryModel"` instead of a
 hard-coded model name (e.g. the `catalogues` feature joins to whatever the project's "main" model
 is — `Product` in FaceNote, `Destination` in a travel spec). Resolution order: an explicit
@@ -77,6 +79,13 @@ is — `Product` in FaceNote, `Destination` in a travel spec). Resolution order:
 configured. **This fallback must stay in sync with `EmitControllersViewsStage.FeaturePrimaryModel`**
 — a feature enabled with no explicit `model` and no image-bearing model in the spec leaves the
 literal string `"$primaryModel"` in a relation target, which fails semantic validation downstream.
+
+Two features may bring the same entry: a name collision with an **identical** definition (after
+token resolution) is merged once; a collision with a **different** definition fails expansion. This
+is how `cart` and `orders` share `CartItem` — keep the two fragments' `CartItem` identical (a unit
+test enforces it). `cart` alone gives the cart (add, remove, total); `orders` adds checkout, order
+history and order details on top. `personalization` adds no models — it is a layout switch for the
+navbar greeting/avatar/"my profile" link (changelog 141).
 
 ### `seedUsers` has no password field
 
@@ -89,6 +98,7 @@ re-runs of the same spec without ever being hand-written or checked in.
 ## Where to look next
 
 - Field-by-field shape, validation rules, enums: `spec.schema.json` directly.
+- The other input — the rows that fill the models: [seed format](seed-format.md).
 - Why the three-file split, why variation is deterministic, why seeding uses symbolic refs:
   `docs/explanation/architecture-decisions.md` (ADR-001, ADR-004, ADR-003).
 - The Bulgarian-UI `displayName` requirement's enforcement point: the `verify` stage's English-leak

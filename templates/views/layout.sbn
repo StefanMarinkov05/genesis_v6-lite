@@ -20,7 +20,7 @@ for c in spec.controllers; for a in c.actions; if a == "Contact"; has_contact = 
 f_posts = false; f_orders = false; f_follows = false; f_rating = false; f_catalogues = false
 ~}}
 @inject Microsoft.AspNetCore.Identity.UserManager<{{ meta.root_namespace }}.Models.ApplicationUser> UserManagerNav
-{{~ if features.orders ~}}
+{{~ if has_cart ~}}
 @inject {{ meta.root_namespace }}.{{ meta.project_name }}Context NavCartContext
 {{~ end ~}}
 @{
@@ -122,6 +122,9 @@ f_posts = false; f_orders = false; f_follows = false; f_rating = false; f_catalo
                 <ul class="navbar-nav">
                     @if (User.Identity?.IsAuthenticated == true)
                     {
+{{~ # features.personalization owns the signed-in user's personal surface (changelog 141): ~}}
+{{~ # greeting by first name, avatar, and a link to the user's own public profile. ~}}
+{{~ if features.personalization ~}}
 {{~ has_first_name = false; has_pfp = false ~}}
 {{~ if spec.identity ~}}
 {{~ for ep in spec.identity.application_user.extra_properties ~}}
@@ -140,7 +143,16 @@ f_posts = false; f_orders = false; f_follows = false; f_rating = false; f_catalo
                             </a>
                         </li>
 {{~ end ~}}
-{{~ if features.orders ~}}
+{{~ if features.posts || features.catalogues ~}}
+                        @if (navUser is not null)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="Client" asp-controller="Profiles" asp-action="Public" asp-route-id="@{{ meta.root_namespace }}.Infrastructure.ProfileHash.Of(navUser.Id)">Моят профил</a>
+                            </li>
+                        }
+{{~ end ~}}
+{{~ end ~}}
+{{~ if has_cart ~}}
                         <li class="nav-item">
                             @{
                                 var cartCount = navUser is not null

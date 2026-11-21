@@ -1,4 +1,5 @@
 {
+  "_comment": "Feature 'cart': a per-user shopping cart over the primary model (add, remove, total), without checkout. Its CartItem MUST stay identical to orders.json's - enabling both merges one CartItem (MergeFragment skips identical duplicates). The CartController and Cart views are emitted by EmitControllersViewsStage when cart or orders is on; orders adds checkout and order history (changelog 141).",
   "models": [
     {
       "name": "CartItem",
@@ -21,6 +22,11 @@
           ]
         },
         {
+          "name": "$primaryModelId",
+          "type": "int",
+          "foreignKey": true
+        },
+        {
           "name": "Quantity",
           "type": "int",
           "displayName": "Количество",
@@ -29,28 +35,26 @@
               "attribute": "Range",
               "args": [
                 1,
-                100
+                99
               ],
-              "errorMessage": "Количеството трябва да е между 1 и 100."
+              "errorMessage": "Количеството трябва да е между 1 и 99."
             }
           ]
         }
       ],
-      "relations": [],
+      "relations": [
+        {
+          "kind": "manyToOne",
+          "target": "$primaryModel",
+          "navigation": "$primaryModel",
+          "inverseNavigation": "CartItems",
+          "onDelete": "Cascade"
+        }
+      ],
       "displayName": "Артикули в кошница",
       "isLookup": true
     }
   ],
   "dtos": [],
-  "controllers": [
-    {
-      "name": "CartController",
-      "file": "Controllers/CartController.cs",
-      "model": "CartItem",
-      "generatedBy": "template",
-      "actions": [
-        "Index"
-      ]
-    }
-  ]
+  "controllers": []
 }

@@ -3,7 +3,7 @@
 
 **Diataxis type:** explanation (synthesis + index). **Source of truth:** `docs/adr/*` — this doc
 holds **no decision detail of its own**; every claim below links the ADR that owns it. Per
-`plan/task-a-doc-architecture.md` decision D1, the ADRs stay the decision *store*, individually
+`plan/archive/task-a-doc-architecture.md` decision D1, the ADRs stay the decision *store*, individually
 cross-referenced elsewhere in the repo; this file is the overview *over* them, not a replacement.
 
 ## The shape, in one paragraph
@@ -116,7 +116,7 @@ image host and the five avatar-render sites collapse to one code path.
 → **[ADR-011](../adr/adr-011-image-pipeline-cache-and-fallbacks.md)** (full design:
 `docs/explanation/image-pipeline.md`)
 
-## Why small models consolidate onto one "Спецификации" page, and filters are auto-derived
+## Why small models consolidate onto one Specifications page, and filters are auto-derived
 
 Two inconsistent handlings of small models (read-only `isLookup` join tables vs. full-CRUD
 atomic reference models with their own nav clutter) unify onto a single tabbed admin page whose

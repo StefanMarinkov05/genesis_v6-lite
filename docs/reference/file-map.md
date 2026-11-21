@@ -25,4 +25,4 @@ adding, removing, or repurposing a source file - its ``// FILE-MAP:`` comment fi
 | ``src/Genesis.Core/Stages/VerifyAndReportStages.cs`` | stage 8 — VerifyStage, the blocking gate (build, EF migrate, boot, HTTP checks, English-leak scan); stage 9 — ReportStage (project-summary.json). |
 | ``src/Genesis.Core/Util/DotnetHost.cs`` | sets DOTNET_ROOT from the `dotnet` on PATH so global tools launched by the self-contained dps-nn.exe find the runtime (what `dotnet run` does for its child). |
 | ``src/Genesis.Core/Util/TemplateEngine.cs`` | the single Scriban rendering surface every stage emits code through, plus its helper functions that carry variation into every emitted file. |
-| ``src/Genesis.Core/Variation/VariationResolver.cs`` | ADR-004 deterministic per-project variation — resolves 8 axes from SHA256(seed+axis); also resolves $variation:axis placeholders and seed-user passwords. |
+| ``src/Genesis.Core/Variation/VariationResolver.cs`` | ADR-004 deterministic per-project variation — resolves the 11 style axes from SHA256(seed+axis); also resolves $variation:axis placeholders and seed-user passwords. |

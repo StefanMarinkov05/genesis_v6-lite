@@ -5,7 +5,7 @@ import { app } from 'electron';
 // Two roots (ADR-014). The CLI reads its templates/schema relative to its own GenesisRoot and
 // writes logs/, prompts/, out/ and the image cache relative to its cwd, so the GUI must keep the
 // two apart:
-//   installRoot()   - READ-ONLY: templates/, spec.schema.json, feature-templates/, design/ (footer,
+//   installRoot()   - READ-ONLY: templates/ (incl. features/, static/), spec.schema.json, design/ (footer,
 //                     music), the sample spec + seed. Packaged: <install>/resources/genesis.
 //   workspaceRoot() - WRITABLE, the CLI child's cwd: logs/, prompts/, out/, fixtures/, seeds/,
 //                     uploads. Packaged: Documents\DPS-NN.

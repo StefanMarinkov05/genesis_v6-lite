@@ -54,7 +54,7 @@ public sealed class MetaSection
     /// <summary>
     /// Capability-gap report written by the agent (`dps-nn create`): what the description asked
     /// for that the generator cannot express yet. Informational only - never drives generation;
-    /// it is the backlog for new feature-templates. See docs/explanation/agent-mode.md.
+    /// it is the backlog for new feature fragments (templates/features/). See docs/explanation/agent-mode.md.
     /// </summary>
     [JsonPropertyName("unsupportedRequests")] public List<UnsupportedRequest>? UnsupportedRequests { get; set; }
 

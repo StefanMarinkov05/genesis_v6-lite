@@ -16,7 +16,7 @@ condense the error and ask the model for a corrected **spec**, wipe the generate
 again — at most `--max-repairs` rounds (default 3). The model never touches generated code.
 Requests the generator cannot satisfy are recorded in `meta.unsupportedRequests`
 (`{ request, reason }`) instead of being forced into the spec, and surface in `agent-report.json`
-as the backlog for new feature-templates. Failures caused by the machine (missing SDK, outdated
+as the backlog for new templates/features. Failures caused by the machine (missing SDK, outdated
 `dotnet-ef`, no LocalDB, rejected API key) stop the loop immediately with the fix — no spec edit
 can repair them. Every exchange goes through `LlmBridge`, so ADR-005's file contract, schema
 validation and hash log apply unchanged. Default models: Sonnet for spec draft/repair (reasoning

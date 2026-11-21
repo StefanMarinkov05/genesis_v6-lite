@@ -63,7 +63,7 @@ payment provider, real-time chat...), the model must leave it out and record it:
 
 `create` prints the list and writes `<out>/agent-report.json` (`success`, `stopReason`, every
 attempt with its stage and condensed error, `unsupportedRequests`, `models`). That list is the
-backlog for new `feature-templates/` — the generator grows once, and every later run benefits.
+backlog for new `templates/features/` — the generator grows once, and every later run benefits.
 
 ## Running it
 

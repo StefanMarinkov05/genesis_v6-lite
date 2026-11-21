@@ -26,14 +26,13 @@ of hoped-for:
   (e.g. `Product` depends on `Brand`/`Category` but is itself depended on by `CartItem`/`OrderItem`)
   — if you're touching seed ordering, don't reintroduce a two-pass approach.
 
-**Trap — `ResolveDesignPreset` uses `GetHashCode()`, not the deterministic hash.** Every other
-variation axis is `SHA256(seed + axis) % options.Length` per ADR-004, specifically because
-`GetHashCode()` is process-randomized in .NET and would break reproducibility. `TemplateEngine.
-ResolveDesignPreset` (line ~154) picks the design-token preset via
-`variation.Seed.GetHashCode() % names.Count` instead — a real deviation from the ADR-004 guarantee,
-scoped only to *which cosmetic design preset* a project gets (not build-breaking, not seed-password
-or role-name affecting). Flagged here rather than silently fixed — if you're touching design-preset
-selection, this is worth reconciling with ADR-004's stated invariant.
+**Trap — never pick anything with `GetHashCode()`.** It is process-randomized in .NET, so a pick
+made with it changes between two runs of the same spec. `TemplateEngine.ResolveDesignPreset` did
+exactly that for the unpinned design preset until changelog 141; it now uses
+`VariationResolver.DeterministicIndex(seed, "designPreset", count)`, the same
+`SHA256(seed:axis)` pick as every ADR-004 axis, pinned by a golden-value test
+(`Unpinned_design_preset_is_sha256_of_seed`). Any new seed-derived choice goes through
+`DeterministicIndex` too.
 
 ## Razor `<style>` blocks: escape `@` as `@@`
 

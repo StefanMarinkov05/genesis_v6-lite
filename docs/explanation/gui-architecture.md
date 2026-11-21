@@ -1,7 +1,7 @@
 <!-- last-verified: 5821ff6f31c37384b3bf306ddf9ee24276324030 -->
 # GUI architecture — Electron shell over the headless Genesis CLI
 
-Design record for Task B of `plan/dps-nn-6.5.0-spec.md`. This is the **architecture** every GUI
+Design record for Task B of `plan/archive/dps-nn-6.5.0-spec.md`. This is the **architecture** every GUI
 subtask (theming, i18n, process wiring, dedup, Claude-seed) builds against — it fixes the process
 model, the GUI↔CLI contract, and the IPC surface. It does **not** cover visual design (theme tokens,
 the 5 themes) — that is Task 2, `design/design-specs.md`.
@@ -50,7 +50,7 @@ flowchart LR
 | Concern | Contract | Source of truth |
 |---|---|---|
 | Invocation | `dps-nn run --all --spec <path> --out <dir> --no-interactive` | `Program.cs` run command |
-| Working dir | **Must** be the workspace — the CLI writes `logs/`, `prompts/`, `dps-nn.log.jsonl`, `.image-cache/`, the registry relative to cwd, and reads `templates/`, `spec.schema.json`, `feature-templates/` from its own `GenesisRoot()` (exe dir first, then cwd). In a checkout both are the repo root; installed, the install root is read-only and the workspace is `Documents\DPS-NN` (ADR-014) | `GenesisRoot()`, `Llm()`, `paths.ts` |
+| Working dir | **Must** be the workspace — the CLI writes `logs/`, `prompts/`, `dps-nn.log.jsonl`, `.image-cache/`, the registry relative to cwd, and reads `templates/`, `spec.schema.json`, `templates/features/` from its own `GenesisRoot()` (exe dir first, then cwd). In a checkout both are the repo root; installed, the install root is read-only and the workspace is `Documents\DPS-NN` (ADR-014) | `GenesisRoot()`, `Llm()`, `paths.ts` |
 | Prerequisites | At startup the GUI runs `dps-nn doctor` once and streams it into the debug terminal (no new channel — it rides `build:onLog`). Informational only; a run started meanwhile waits for it to exit (two concurrent `dotnet run` builds of the CLI collide on Windows file locks) | `GenesisRunner.doctor()`, `Doctor` |
 | No prompts | `--no-interactive` is **mandatory** — the GUI can't answer the CLI's stdin spec/seed pickers, so it replaces them with its own file/list UI and passes an explicit `--spec` + pre-places the seed at `prompts/in/seed-response.json` | `ResolveSpecInteractively`, `ResolveSeedInteractively` |
 | API key | Injected into the **child env** by the main process when configured; never on the command line, never in the renderer | `Llm()` reads `ANTHROPIC_API_KEY` |
@@ -120,20 +120,36 @@ detaches/unrefs it and it isn't part of the tracked pipeline `RunState`). Distin
 ## Run-control state machine
 
 ```mermaid
-stateDiagram-v2
-  [*] --> Idle
-  Idle --> Running: Start (spawn run --all)
-  Running --> Paused: Pause (kill child immediately)
-  Paused --> Running: Resume (respawn run --all; skips done stages)
-  Running --> AwaitingLLM: exit 3
-  AwaitingLLM --> Running: seed/response filled + --resume
-  Running --> Done: natural completion (banner + report)
-  Running --> Error: stage error (non-zero, ≠3)
-  Running --> Idle: Stop (kill; state.json kept)
-  Paused --> Idle: Stop
-  Error --> Running: Resume (idempotent re-run)
-  Done --> [*]
+---
+config:
+  layout: elk
+---
+flowchart TD
+  start(( )) --> Idle([Idle])
+  Idle -->|Start| Running([Running])
+  Running -->|Pause| Paused([Paused])
+  Paused -->|Resume| Running
+  Running -->|exit 3| AwaitingLLM([AwaitingLLM])
+  AwaitingLLM -->|"--resume"| Running
+  Running -->|finished| Done([Done])
+  Running -->|stage failed| Error([Error])
+  Error -->|Resume| Running
+  Running -->|Stop| Idle
+  Paused -->|Stop| Idle
+  Done --> finish((( )))
 ```
+
+| Transition | What happens |
+|---|---|
+| Start | spawns `run --all` |
+| Pause | kills the child immediately (see below for why that is safe) |
+| Resume (from Paused) | respawns `run --all`, which skips the stages already done |
+| exit 3 | an LLM exchange is waiting for a response file |
+| --resume | the response (e.g. the seed) is filled in and the run continues |
+| finished | natural completion: banner + report |
+| stage failed | a non-zero exit other than 3 |
+| Resume (from Error) | re-runs from the failed stage; stages are idempotent |
+| Stop | kills the child; `state.json` is kept |
 
 **Why kill-to-pause is correct, not crude:** every `IStage.RunAsync` is contractually idempotent
 and `MarkDone` only fires *after* a stage completes. So killing the child mid-stage leaves that
@@ -218,9 +234,10 @@ Task 1 must leave the right seams; it does not choose colours.
   not a flat token map.
 - **Runtime footer.** `design/footer.md` is read at runtime via `footer:get` (never bundled), so it
   can change without a rebuild. Empty/placeholder = render nothing, never error.
-- **i18n.** String tables per language (EN, BG, DE, RU, Romani) resolved in the renderer; the
+- **i18n.** String tables per language (EN, BG, DE, RU, TR, Romani) resolved in the renderer; the
   Standard Galactic Alphabet "language" is a **font swap over the English strings**, not a
-  translation. All of this is renderer-local; the main process is language-agnostic. The chosen
+  translation, and six joke modes (Morse, hex, sign, pirate, leet, upside-down) are encoders over
+  the English strings — thirteen picker entries in all. All of this is renderer-local; the main process is language-agnostic. The chosen
   language persists through the existing `settings.language` field — **no new IPC channel**.
   **Built in phase 3b** (changelog 093): the six tables + a data-driven flag picker live under
   `gui/src/renderer/i18n/`; flags are **inline SVG**, not PNG (CSP-safe and self-contained — the

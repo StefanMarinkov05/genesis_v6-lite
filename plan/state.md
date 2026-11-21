@@ -420,3 +420,172 @@ to master / v* tag and pushed to `StefanMarinkov05/genesis_v6-lite` via a deploy
 history, tags mirrored so the lite repo builds the Lite installer. Rehearsed against a local bare
 repo. Lite repo + deploy key not created yet (outward step, awaiting Stefan). Next: create the lite
 repo, push, Windows dry run of release.yml, then phase 6 (visibility flip - ask first).
+
+## Session 35c (Opus: post-merge fixes) - changelog 136
+PR #7 merged (2026-11-17). `genesis_v6-lite` created (public), deploy key + `LITE_DEPLOY_KEY`
+secret set; the first lite-mirror sync succeeded, CI green in both repos. The handbook workflow failed
+(`lmodern.sty` not found: `fonts-lmodern` has only the fonts) - now installs `lmodern`. The lite
+repo now gets its own hand-written `README.lite.md` instead of a patched README; full README
+gained a "The music" section. Next: Windows dry run of release.yml, then phase 6 (ask first).
+
+## Session 36 (Opus: handbook audit + edition 2 proposal) - changelog 137
+Audited the docs against the code and wrote a second, separately authored handbook under
+`handbook2/` (18 chapters, 5 parts, 7 diagrams) built by `scripts/build-handbook2.py` to
+`dist/dps-nn-handbook-v2.pdf` (59 pages; edition 1 rebuilt at 90). Structure is a gradient:
+overview -> one generation as a story -> output tour -> hands-on -> the machine -> components ->
+quality -> runtime -> limits/glossary/decisions. Audit fixes: `spec-build` is not part of
+`run --all` (control flow corrected; `--from` unknown stage runs nothing - documented, not
+changed); ADR-004 vs ADR-008 attribution; 67 files = 63 .sbn + 4 JSON maps; file map covers
+`src/` only; the seed JSON contract was undocumented (new `docs/reference/seed-format.md`); the
+seed skill emitted `imageKeyword` while the stage requires `imageKeywords` (array) - fixed;
+VariationResolver header said 8 axes, registry has 11 - re-synced. Not wired into CI yet; the
+edition is a review artifact.
+
+Naming note (same session): the English handbook is now titled **Genesis** (cover, running head,
+PDF metadata, edition-2 chapters); `dps-nn` stays the executable/CLI spelling and ДПС-НН the
+Bulgarian edition. Conflicts with ADR-009's single user-visible name — recorded in changelog 137 as
+an amendment to make, not silently applied repo-wide. The cover logo still shows ДПС-НН.
+Motivation added (same session): both handbooks now explain the variety mechanism by its use case -
+one developer delivering several projects to the same school/class, submissions compared side by
+side. Documented honestly: style/naming/presentation/content/feature-composition vary; page
+structure does not (one template set).
+Handbook edition 2 batch (same session): Ch1 now lists the real capability inventory; new Ch14
+"how the project is built" (AI-DLC, Diátaxis, skills vs raw prompts, Sonnet/Haiku ~$0.17 measured
+by Stefan, red-green-revert-green, CLI-for-agents + GUI-for-people); new Ch17 "the delivered
+application" (what a buyer receives, capability inventory, ownership marks: default clean, marked
+builds per chosen seed with private tooling, can fail at startup / play music / self-edit / loop —
+mechanism intentionally undocumented); Ch5 gained the spec-level personalization section (merging
+controllers/views/DTOs, names, messages). All Cyrillic removed from the English manuscript.
+Preface is now unnumbered front matter so printed chapter numbers match prose references.
+Handbook edition 2, architecture round (same session): new Ch8 "The architecture, in one picture"
+(style, 13-pattern catalogue with limits, deliberately absent patterns, coding style for generator
+and generated app, problems->mechanisms, tools table with rejected alternatives, standout claims).
+Original edition's Parts II-III moved in as Part V "Deep dives" (CLI, GUI, image pipeline,
+Specifications page, techniques) - the same docs/, rendered English via a new build-time
+TEXT_TRANSFORMS hook. Ch1 gained a "Signature choices" table so ADR reasoning appears as product
+characteristics, not only as links. Book renumbered to 25 chapters, 96 pages; TOC and cross-refs
+checked; zero Cyrillic.
+
+## Session 37 — four editions of the handbook
+
+`scripts/build-handbook.py` is now a parameterised engine (fonts, logo, cover gradient + national
+band, title/labels/tags/licence, text transforms) and `scripts/build-handbook2.py --lang {en,bg,de,xx}`
+drives it. Shipped: en 96 p, bg 75 p, de 75 p, galactic 110 p, plus edition 1 rebuilt at 90 p.
+
+Nine defects fixed (recorded in `changelogs/137-...md`): unsubstituted `@HANDBOOKUPPER@` on covers,
+`@FONTSETUP@` substituted before `@PLEX@`, inverted flag bands, one logo for every edition, an
+alpha-flattening "background removal" that produced a black box, Deseret → Minecraft SGA with one
+macro per letter pinned to a font that has the glyph, English Mermaid labels in the galactic edition,
+letterspacing eating the cover word gap, and five missing translated sections.
+
+Lesson recorded: render the artwork on the target background and pre-render every diagram before
+starting a four-minute PDF build.
+
+
+## Session 38 — handbook translations proofread (changelog 138)
+
+Edition 2 approved by the author. bg and de read in full. Each had duplicated sections in ch 8/11/13,
+left by the 137 addendum adding full sections without removing the condensed ones. Both now
+deduplicated, and de/08 reordered to the English section order. Latin prose words, calques and
+grammar were fixed in bg; grammar, false friends and English leftovers were fixed in de. The English
+manuscript was left untouched. Its weaknesses were reported to the author: wrong cross-reference
+chapter numbers, ch12/13 layering vs the real imports, ch14 missing test-first/regression/mutants,
+and the ch23 ownership-marks risk.
+
+## Session 39 — handbook claim audit (changelog 139)
+
+The author asked that every claim in edition 2 be true for Genesis. Chapters 00–25, plus the docs
+behind 17–21, were read against the code. About 30 false or overstated claims were rewritten: the
+biggest are that `verify` "fetches every route" (only `/` and the admin login are hard failures),
+the ch02 wishlist feature (does not exist), the seven features (`cart` is unusable, `personalization`
+inert) and "the same spec always yields the same app" (the preset uses `GetHashCode()`). Same-claim
+fixes went into README, README.lite, project-overview, control-flow, generated-app-anatomy and
+gui-architecture (13 GUI languages, TR was missing). Sonnet mirrored the change list into bg/de;
+the Opus review fixed four bg calques. Builds: en 98 pages, bg 77, de 77, galactic 113 — 0 Missing
+character warnings, no Cyrillic in de, no `../docs` links or duplicate H2 in bg/de.
+
+Code issues found and reported, NOT fixed (await the author): lenient verify + no anonymous-access
+check; broken `cart` fragment; inert `personalization`; `GetHashCode()` preset pick.
+
+## Session 40 — bg handbook ownership marks + demo watermark (changelog 140)
+
+Author asked to document the watermark/delivery behaviour. English stays the serious public book, so
+only `handbook2/bg/23` was edited. The section now separates (a) the inert authorship MARK (passive
+signature; marked project is still a clean build, passes `verify`) from (b) the demo WATERMARK.
+Author confirmed (b) is DISCLOSED trialware: buyer knows it's a demo, only the seller's tool makes
+the clean build. Documented the named demo behaviours as disclosed limitations when run unlicensed
+(plays music e.g. Azis; source self-modifies so it won't compile; heavy computation so pages don't
+load; similar), plus a Граници note that it's confined to the demo and removed by the clean build,
+and that the book documents behaviour, not the removal-tool/self-modification implementation. bg
+rebuilt: 78 pages, 0 Missing character warnings. en/de/xx untouched.
+
+## Session 41 — four generator bugs from the audit fixed (changelog 141)
+
+Author chose to repair, not remove. Order: preset hash → verify → personalization → cart.
+(1) Preset now `DeterministicIndex(seed,"designPreset",n)`, golden-value test. (2) verify strict:
+every declared route must answer 200, failures collected and thrown once; new anonymous-refusal pass
+(401/403/302→Login|AccessDenied). Adding it exposed that scaffolded admin + client CRUD controllers
+had NO `[Authorize]` — new `InjectAreaAuthorization` (admin role on admin area; `[Authorize]` +
+`[AllowAnonymous]` Index/Details elsewhere). (3) cart: cart.json's CartItem = orders.json's,
+controllers entry dropped, MergeFragment dedups identical defs (throws on conflicting), `has_cart`
+template flag; checkout/Orders/OrderDetails stay on `orders`. (4) personalization gates the navbar
+greeting/avatar + "Моят профил" link. Tests 191 green, each fix revert-checked. Docs: handbook2
+en+de (bg untouched by request; trump derives from en), README(s), control-flow, techniques,
+anatomy, spec-format; PDFs rebuilt.
+
+NOT run: generated-app verify (LocalDB = Windows). Needs a Windows `run --all` on FaceNote and on a
+cart-only spec — the stricter gate may surface routes that were silently skipped before.
+
+## Session 42 — handbook Trump edition (changelog 142)
+
+New edition `handbook2/trump/` (00–25), built with `build-handbook2.py --lang trump` into
+`dist/dps-nn-handbook-trump.pdf` (98 pp, 0 Missing character).
+
+- Tables, code and diagrams are verbatim from en, with the voice in the prose only. 17–21 are
+  condensed retellings.
+- Author rules:
+  - no people, parties or ideologies; nameless catchphrases are OK;
+  - judge MDGA.png by file name only (the cover middle was not viewed);
+  - "MAKE DIPLOMA PROJECTS GREAT AGAIN" is an assumed reading of MDGA.
+- Re-synced to changelog 141 mid-session: strict verify, `[Authorize]`, cart, personalization,
+  preset fixed.
+- STALE in the English source, not fixed here: en 01:127, 15:103, 24 (preset and verify rows),
+  25:16 (and probably de 24/25). Fix them in en/de next and rebuild those PDFs.
+
+## Session 43 — handbook Trump edition in Bulgarian (changelog 143)
+
+New edition `docs/handbook/trump-bg/` (00–25), built with `build-handbook2.py --lang trump-bg` into
+`dist/dps-nn-handbook-trump-bg.pdf` (110 pp, 0 Missing character). The cover logo is MDGA_bg.png,
+judged by file name only.
+
+- It translates `trump/` (post-141 facts), not `bg/`.
+- Terminology follows the bg glossary.
+- Code is verbatim from trump, and the diagrams come from bg.
+- ch23 was translated from trump/23 only. Author rule: never read bg/23 for this.
+- The author allows Bulgarian jokes and sayings, but no people, parties or ideologies.
+- `handbook2/` was moved to `docs/handbook/` by a concurrent session mid-write. One stray file was
+  moved over by hand.
+- The English trump PDF was rebuilt (trump/01 riff placement).
+- Follow-up: once the `feature-templates/` → `templates/features/` move lands, sweep the path
+  mentions in all editions. The cover's "Version" label is English in every edition.
+
+## Session 44 — directory reorganization + dist tracked (changelog 145)
+
+Tier 1+2 approved, Tier 3 (one workspace/ dir) rejected — prompts/ out/ logs/ stay at root.
+Moves: feature-templates/ → templates/features/, images/ → templates/static/, handbook2/ →
+docs/handbook/, docs/01-tutorial-genesis.md → docs/tutorial/genesis.md, 5 finished plans →
+plan/archive/. spec.schema.json stays at root (GenesisRoot marker). dist/ is now tracked; lite
+mirror keeps only English handbook (sources + the two EN PDFs + build scripts). Also finished the
+141 doc sweep (en 01/15/24/25, de 15/24/25). Tests 191 green. bg/trump-bg left with old paths
+(author's rule); file-map.md needs regenerating on Windows (pwsh); PDFs not rebuilt (another
+session was building into build/handbook/ concurrently).
+
+## Session 41 — trump-bg handbook watermark (changelog 144)
+
+Carried the watermark/demo documentation (changelog 140, serious bg) into the Bulgarian Trump edition
+`docs/handbook/trump-bg/23`, in that edition's voice. Kept the three ownership facts; added four
+subsections: inert mark (passive, still a clean build), disclosed demo watermark, demo behaviours
+when run unlicensed (Azis music, self-modifying source so it won't compile, heavy-computation hang —
+all removed by the clean build), and a Границите scope note (confined to the demo; book documents
+behaviour not the removal-tool/self-mod implementation). Same facts + safety boundary as bg,
+Trump register. Built --lang trump-bg: 111 pages, 0 Missing character warnings. Other editions untouched.

@@ -31,8 +31,9 @@ The installer lands in `gui\dist\DPS-NN-Setup-<version>.exe`.
 `<install>\resources\genesis\`:
 
 - `dps-nn.exe` — `dotnet publish` self-contained single file (`win-x64`).
-- Everything the CLI reads from its `GenesisRoot()`: `templates/`, `feature-templates/`,
-  `spec.schema.json`, `images/`, `utils/claude-skills/dps-nn-spec-authoring/`.
+- Everything the CLI reads from its `GenesisRoot()`: `templates/` (feature
+  fragments in `templates/features/`, fallback SVGs in `templates/static/`), `spec.schema.json`,
+  `utils/claude-skills/dps-nn-spec-authoring/`.
 - The sample: `fixtures/project-spec.facenote.json`, `seeds/facenote-rich-seed.json`.
 - `design/footer.md`, `LICENSE`, `VERSION`.
 - **Full edition only:** the git-tracked files under `design/music/` (untracked local files are

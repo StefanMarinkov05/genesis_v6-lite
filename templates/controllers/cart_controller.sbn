@@ -6,11 +6,17 @@ using {{ meta.root_namespace }}.Models;
 
 {{ ns_open (meta.root_namespace + ".Areas.Client.Controllers") }}
 
+{{~ if features.orders ~}}
 /// <summary>
 /// Количка + поръчка с 1 клик: без платежен доставчик - бутонът директно създава
 /// Order от съдържанието на количката и я изпразва. Статусът на поръчката тръгва
 /// от Nova; историята на поръчките е само за четене.
 /// </summary>
+{{~ else ~}}
+/// <summary>
+/// Количка на потребителя: добавяне, премахване и обща сума (без финализиране на покупка).
+/// </summary>
+{{~ end ~}}
 [Area("Client")]
 [Authorize]
 public class CartController : Controller
@@ -62,6 +68,7 @@ public class CartController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+{{~ if features.orders ~}}
     // Поръчка с доставка: количка -> Order + OrderItems, количката се изпразва.
     // Получателят и адресът са задължителни (проверка на сървъра - формата подава
     // само низове, моделът не се биндва директно, затова [Required] върху Order
@@ -164,5 +171,6 @@ end
         if (order is null) return NotFound();
         return View(order);
     }
+{{~ end ~}}
 }
 {{ ns_close }}

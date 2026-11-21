@@ -92,10 +92,15 @@ public sealed class EmitControllersViewsStage : IStage
                     InjectPostCommentsIntoAdminDetails(ctx, controller);
                     InjectReviewLoadingIntoDetails(ctx, controller);
                     ApplyDeviations(ctx, controller, engine);
+                    InjectAreaAuthorization(ctx, controller); // last: sees the final action set
                     break;
                 case "template":
                     await EmitModelsStage.WriteAsync(ctx, controller.File,
                         engine.RenderFile(ctx.Template("controllers/controller.sbn"), new { controller }), ct);
+                    // Template controllers are landing/home pages in the client area and must stay
+                    // public; one placed in an admin-role area is locked like a scaffolded one.
+                    if (IsAdminArea(ctx.Spec, controller.Area))
+                        InjectAreaAuthorization(ctx, controller);
                     break;
             }
         }
@@ -148,17 +153,24 @@ public sealed class EmitControllersViewsStage : IStage
             Emit("Areas/Client/Views/Posts/Details.cshtml", () => engine.RenderFile(ctx.Template("views/posts_details.sbn")));
             Emit("Areas/Client/Views/Posts/Create.cshtml", () => engine.RenderFile(ctx.Template("views/posts_create.sbn")));
         }
-        if (FeatureEnabled(spec, "orders"))
+        // Changelog 141: the cart surface exists with `cart` OR `orders` (both fragments bring the
+        // same CartItem); checkout, order history and order details only with `orders`, and the
+        // templates gate their Order code on features.orders so a cart-only project compiles.
+        var hasOrders = FeatureEnabled(spec, "orders");
+        if (hasOrders || FeatureEnabled(spec, "cart"))
         {
-            var primary = FeaturePrimaryModel(spec, "orders");
+            var primary = FeaturePrimaryModel(spec, hasOrders ? "orders" : "cart");
             var priceProp = spec.Models.First(m => m.Name == primary).Properties
                 .FirstOrDefault(pp => pp.Type == "decimal")?.Name ?? "Price";
             var extra = new { primary, price_property = priceProp };
             Emit("Areas/Client/Controllers/CartController.cs", () => engine.RenderFile(ctx.Template("controllers/cart_controller.sbn"), extra));
             Emit("Areas/Client/Views/Cart/Index.cshtml", () => engine.RenderFile(ctx.Template("views/cart_index.sbn"), extra));
-            Emit("Areas/Client/Views/Cart/Orders.cshtml", () => engine.RenderFile(ctx.Template("views/cart_orders.sbn"), extra));
-            // A6: per-order details (read-only, own orders only).
-            Emit("Areas/Client/Views/Cart/OrderDetails.cshtml", () => engine.RenderFile(ctx.Template("views/cart_order_details.sbn"), extra));
+            if (hasOrders)
+            {
+                Emit("Areas/Client/Views/Cart/Orders.cshtml", () => engine.RenderFile(ctx.Template("views/cart_orders.sbn"), extra));
+                // A6: per-order details (read-only, own orders only).
+                Emit("Areas/Client/Views/Cart/OrderDetails.cshtml", () => engine.RenderFile(ctx.Template("views/cart_order_details.sbn"), extra));
+            }
         }
         if (FeatureEnabled(spec, "follows"))
         {
@@ -327,6 +339,60 @@ public sealed class EmitControllersViewsStage : IStage
         source = source.Insert(m.Index, $"[Area(\"{area}\")]\n");
         File.WriteAllText(path, source);
         ctx.Info($"injected [Area(\"{area}\")] into {c.Name}");
+    }
+
+    /// <summary>True when <paramref name="area"/> is mapped (areas[].forRole) to a role flagged isAdmin.</summary>
+    internal static bool IsAdminArea(ProjectSpec spec, string? area)
+    {
+        if (area is null) return false;
+        var role = spec.Areas.FirstOrDefault(a => a.Name == area)?.ForRole;
+        return role is not null && (spec.Identity?.Roles.Any(r => r.IsAdmin && r.Name == role) ?? false);
+    }
+
+    /// <summary>
+    /// Changelog 141: turn areas[].forRole into an authorization fact. The scaffolder emits no
+    /// [Authorize], and before this nothing added one, so every scaffolded admin CRUD controller
+    /// was open to anonymous users.
+    ///  - area mapped to an admin role: [Authorize(Roles = "&lt;role&gt;")] on the class;
+    ///  - any other role-mapped area: [Authorize] on the class and [AllowAnonymous] on the read
+    ///    actions (Index, Details), so card grids and detail pages stay public while
+    ///    Create/Edit/Delete need a login (ownership deviations then decide whose rows).
+    /// An area with no areas[] entry is left alone. Idempotent: a controller that already
+    /// carries any [Authorize is skipped.
+    /// </summary>
+    internal static void InjectAreaAuthorization(StageContext ctx, ControllerSpec c)
+    {
+        if (c.Area is null) return;
+        var role = ctx.Spec.Areas.FirstOrDefault(a => a.Name == c.Area)?.ForRole;
+        if (string.IsNullOrEmpty(role)) return;
+
+        var path = Path.Combine(ctx.ProjectDir, c.File);
+        if (!File.Exists(path)) return;
+        var source = File.ReadAllText(path);
+        if (source.Contains("[Authorize")) return; // idempotent rerun / hand-authored template
+
+        var classRx = new Regex($@"public\s+class\s+{c.Name}\b");
+        var cm = classRx.Match(source);
+        if (!cm.Success)
+            throw new InvalidOperationException($"InjectAreaAuthorization: class declaration not found in {c.File}.");
+
+        var admin = IsAdminArea(ctx.Spec, c.Area);
+        if (!admin)
+        {
+            // Insert from the end backwards so earlier indexes stay valid.
+            var reads = new Regex(@"public\s+(async\s+Task<IActionResult>|IActionResult)\s+(Index|Details)\s*\(")
+                .Matches(source).Cast<Match>().Where(m => m.Index > cm.Index).OrderByDescending(m => m.Index);
+            foreach (var m in reads)
+                source = source.Insert(m.Index, "[AllowAnonymous]\n        ");
+        }
+        source = source.Insert(cm.Index, admin ? $"[Authorize(Roles = \"{role}\")]\n    " : "[Authorize]\n    ");
+        if (!source.Contains("using Microsoft.AspNetCore.Authorization;"))
+            source = "using Microsoft.AspNetCore.Authorization;\n" + source;
+
+        File.WriteAllText(path, source);
+        ctx.Info(admin
+            ? $"injected [Authorize(Roles = \"{role}\")] into {c.Name}"
+            : $"injected [Authorize] (+ [AllowAnonymous] on Index/Details) into {c.Name}");
     }
 
     /// <summary>

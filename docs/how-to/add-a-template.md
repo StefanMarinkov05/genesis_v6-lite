@@ -1,7 +1,7 @@
 <!-- last-verified: e95fedf -->
 # How to add a Scriban template
 
-**Diataxis type:** how-to (task steps). **Source of truth:** `templates/` + `feature-templates/` +
+**Diataxis type:** how-to (task steps). **Source of truth:** `templates/` + `templates/features/` +
 `src/Genesis.Core/Util/TemplateEngine.cs`. For the helper surface and its traps (e.g. the `@@media`
 Razor escape), see `docs/explanation/techniques.md` — this doc holds steps only, not the patterns.
 
@@ -10,7 +10,7 @@ Razor escape), see `docs/explanation/techniques.md` — this doc holds steps onl
 1. **Place the `.sbn` file** under the matching subfolder of `templates/` — `models/`,
    `controllers/`, `views/`, `identity/`, `project/` — mirroring what it emits. A reusable fragment
    that only activates when a spec's `features.<name>.enabled` is true belongs under
-   `feature-templates/<name>.json` instead (see `docs/reference/spec-format.md` "Feature expansion"
+   `templates/features/<name>.json` instead (see `docs/reference/spec-format.md` "Feature expansion"
    for how those get merged into the spec at `spec-expand` time — that's a spec-fragment file, not a
    Scriban template, even though it's JSON).
 

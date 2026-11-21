@@ -2,7 +2,7 @@
 # that must be the first line of every hand-written .cs file under src/. Never hand-edit
 # file-map.md directly - edit the header comment in the source file and re-run this script.
 # See .claude/rules/documentation.md ("generate the generatable") and
-# plan/task-a-doc-architecture.md section 3.
+# plan/archive/task-a-doc-architecture.md section 3.
 #
 # Uses raw [System.IO.File] read/write (not Get-Content/Set-Content -Encoding utf8) because
 # Windows PowerShell 5.1's encoding cmdlets misdetect UTF-8-without-BOM source files under a

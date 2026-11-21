@@ -1,4 +1,4 @@
-// FILE-MAP: ADR-004 deterministic per-project variation — resolves 8 axes from SHA256(seed+axis); also resolves $variation:axis placeholders and seed-user passwords.
+// FILE-MAP: ADR-004 deterministic per-project variation — resolves the 11 style axes from SHA256(seed+axis); also resolves $variation:axis placeholders and seed-user passwords.
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;

@@ -1,7 +1,7 @@
 <!-- last-verified: 680a955 -->
 # Visual design system — DPS-NN GUI
 
-Design record for Task 2 of `plan/dps-nn-6.5.0-spec.md` (Opus). This fixes the **token architecture**
+Design record for Task 2 of `plan/archive/dps-nn-6.5.0-spec.md` (Opus). This fixes the **token architecture**
 and the **consistency rules** that every theme implements, so all five themes read as one product.
 It is the contract the Sonnet theme-implementation subtasks build against — parallel to how
 `docs/explanation/gui-architecture.md` is the contract the wiring tasks build against.

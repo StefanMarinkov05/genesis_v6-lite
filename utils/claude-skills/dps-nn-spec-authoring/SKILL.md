@@ -147,7 +147,8 @@ ever actually used one**; every real fixture's `dtos` array is empty. Treat it a
   global query filter so admins can undo deletes without losing data).
 - **`models`** — the domain entities. Each property: `name`, `type` (`string`/`int`/`decimal`/
   `DateTime`/`DateOnly`/`bool`/`double`/`enum`), `key`/`foreignKey`/`nullable` flags,
-  `validations` (Bulgarian `errorMessage`s), `enumValues`, and **`displayName`** (required — see
+  `validations` (Bulgarian `errorMessage`s), `enumValues`, optional `seedHint` (a sentence the seed
+  LLM is told to honour — real ranges, units, plausible values), and **`displayName`** (required — see
   Hard Requirements). `relations` describe FK/navigation shape. `images` — see Images above.
   `isSpecification`/`isLookup` — see Model Taxonomy above.
 - **`identity`** — `modules` (which Identity pages to generate), `roles`, and `seedUsers` (email +

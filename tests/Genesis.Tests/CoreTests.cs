@@ -12,7 +12,7 @@ using Xunit;
 namespace Genesis.Tests;
 
 // Paths are relative to the test output dir - the csproj copies fixtures/, templates/,
-// feature-templates/ and spec.schema.json next to the test binaries.
+// templates/features/ and spec.schema.json next to the test binaries.
 public static class Paths
 {
     public static readonly string Schema = "spec.schema.json";
@@ -212,6 +212,36 @@ public class VariationTests
         var spec = new SpecLoader(Paths.Schema).Load(Paths.Fixture); // fixture: mode=auto
         var v = VariationResolver.Resolve(spec);
         Assert.Contains(v["bootstrapTheme"], new[] { "flatly", "cosmo", "lumen", "sandstone", "united", "yeti", "journal", "spacelab" });
+    }
+
+    // Changelog 141: an unpinned design preset was picked with string.GetHashCode(), which .NET
+    // randomises per process - the same spec could get a different look on every run. The pick
+    // now uses the axes' SHA256(seed:axis) with axis "designPreset". The expected names are
+    // golden values computed outside .NET (Python hashlib), so they also pin cross-process and
+    // cross-version stability, not just "same answer twice in one process".
+    [Theory]
+    [InlineData("alpha", "rose")]
+    [InlineData("omega", "forest")]
+    [InlineData("s1", "sunset")]
+    [InlineData("s2", "slate")]
+    [InlineData("s5", "midnight")]
+    [InlineData("s7", "royal")]
+    public void Unpinned_design_preset_is_sha256_of_seed(string seed, string expected)
+    {
+        var spec = new SpecLoader(Paths.Schema).Load(Paths.Fixture);
+        spec.Meta.Style.Preset = null;
+        spec.VariationProfile = new() { Seed = seed };
+        var engine = new TemplateEngine(spec, VariationResolver.Resolve(spec));
+        Assert.Equal(expected, engine.RenderString("{{ design.name }}"));
+    }
+
+    [Fact]
+    public void Pinned_design_preset_wins_over_derivation()
+    {
+        var spec = new SpecLoader(Paths.Schema).Load(Paths.Fixture); // fixture pins "midnight"
+        spec.VariationProfile = new() { Seed = "alpha" };              // would derive "rose"
+        var engine = new TemplateEngine(spec, VariationResolver.Resolve(spec));
+        Assert.Equal("midnight", engine.RenderString("{{ design.name }}"));
     }
 
     [Fact]
@@ -634,6 +664,48 @@ public class TemplateEmissionTests
         Assert.DoesNotContain("ViewData[\"CartCount\"]", code);           // dead pattern gone
     }
 
+    // Changelog 141: features.personalization used to merge an empty fragment and gate nothing.
+    // It now owns the signed-in user's personal surface in the layout: the greeting by first
+    // name, the avatar (when the user model has ProfilePicturePath) and a "my profile" link to
+    // the user's own public profile (when profiles exist, i.e. posts || catalogues).
+    [Fact]
+    public void Personalization_on_renders_greeting_avatar_and_my_profile_link()
+    {
+        var (_, engine) = Arrange(); // FaceNote: personalization + posts + catalogues + ProfilePicturePath
+        var code = engine.RenderFile(Path.Combine("templates", "views", "layout.sbn"));
+        Assert.Contains("Здравей,", code);
+        Assert.Contains("navUser!.ProfilePicturePath", code);
+        Assert.Contains("Моят профил", code);
+        Assert.Contains("asp-controller=\"Profiles\" asp-action=\"Public\"", code);
+        Assert.Contains("Infrastructure.ProfileHash.Of(navUser.Id)", code);
+    }
+
+    [Fact]
+    public void Personalization_off_renders_no_personal_widget_but_keeps_cart_and_logout()
+    {
+        var (spec, _) = Arrange();
+        spec.Features["personalization"] = JsonDocument.Parse("""{ "enabled": false }""").RootElement;
+        var engine = new TemplateEngine(spec, VariationResolver.Resolve(spec));
+        var code = engine.RenderFile(Path.Combine("templates", "views", "layout.sbn"));
+        Assert.DoesNotContain("Здравей,", code);
+        Assert.DoesNotContain("navUser!.ProfilePicturePath", code);
+        Assert.DoesNotContain("Моят профил", code);
+        Assert.Contains("NavCartContext.CartItems.Count(", code); // orders still on
+        Assert.Contains("Изход", code);                           // logout always there
+    }
+
+    [Fact]
+    public void Personalization_without_profile_features_has_no_my_profile_link()
+    {
+        var (spec, _) = Arrange();
+        spec.Features["posts"] = JsonDocument.Parse("""{ "enabled": false }""").RootElement;
+        spec.Features["catalogues"] = JsonDocument.Parse("""{ "enabled": false }""").RootElement;
+        var engine = new TemplateEngine(spec, VariationResolver.Resolve(spec));
+        var code = engine.RenderFile(Path.Combine("templates", "views", "layout.sbn"));
+        Assert.Contains("Здравей,", code);           // greeting still personal
+        Assert.DoesNotContain("Моят профил", code);  // no ProfilesController to link to
+    }
+
     // Task 13 (v6 Package I): sort dropdown must preserve its selected value after form submit.
     [Fact]
     public void Card_grid_sort_dropdown_preserves_selected_field()
@@ -742,7 +814,7 @@ public class TemplateEmissionTests
     [Fact]
     public void Orders_feature_template_has_receiver_and_address_fields()
     {
-        var json = File.ReadAllText(Path.Combine("feature-templates", "orders.json"));
+        var json = File.ReadAllText(Path.Combine("templates", "features", "orders.json"));
         Assert.Contains("ReceiverName", json);
         Assert.Contains("DeliveryAddress", json);
         Assert.Contains("Получател", json);           // Bulgarian displayName
@@ -914,7 +986,7 @@ public class TemplateEmissionTests
     }
 
     // A5: "Спецификации" consolidation - hand-built minimal spec (not the raw fixture, which has
-    // no isLookup/Review models until spec-expand injects them from feature-templates, and no
+    // no isLookup/Review models until spec-expand injects them from templates/features, and no
     // dependency on the gitignored *.lock.json). Covers all three tab flavours in one render:
     // isSpecification (Brand, CRUD tab reusing its scaffolded controller), isLookup (CartItem,
     // read-only + relation/user filters), and Feedbacks (Review, read-only + product/user/rating
@@ -1203,6 +1275,67 @@ public class DeviationTests
             try { Directory.Delete(tempDir, recursive: true); } catch { /* best-effort */ }
         }
     }
+
+    // Changelog 141: the scaffolder emits no [Authorize], and nothing added one - every scaffolded
+    // admin CRUD controller (Products, Brands, and all the admin-supervisor ones) was reachable by
+    // anonymous users. areas[].forRole was validated but never emitted. These tests drive the
+    // REAL InjectAreaAuthorization against scaffolder-shaped source.
+    private static (StageContext ctx, string tempDir, string path) ArrangeAuth(string file, string source)
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "dps-nn-tests-" + Guid.NewGuid());
+        var path = Path.Combine(tempDir, "TestProj", file);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, source);
+        var spec = new ProjectSpec
+        {
+            Meta = new MetaSection { ProjectName = "TestProj", RootNamespace = "TestProj" },
+            Identity = new IdentitySection { Roles = [new RoleSpec { Name = "Owner", IsAdmin = true }, new RoleSpec { Name = "Client" }] },
+            Areas = [new AreaSpec { Name = "Admin", ForRole = "Owner" }, new AreaSpec { Name = "Client", ForRole = "Client" }],
+        };
+        var ctx = new StageContext(spec, VariationResolver.Resolve(spec), tempDir, ".",
+            new StateStore(Path.Combine(tempDir, "state.json")), TextWriter.Null);
+        return (ctx, tempDir, path);
+    }
+
+    [Fact]
+    public void Admin_area_scaffold_controller_gets_the_admin_role_authorize()
+    {
+        var (ctx, tempDir, path) = ArrangeAuth("Areas/Admin/Controllers/BrandsController.cs", RealBrandsControllerShape);
+        try
+        {
+            var c = new ControllerSpec { Name = "BrandsController", Area = "Admin", File = "Areas/Admin/Controllers/BrandsController.cs" };
+            EmitControllersViewsStage.InjectAreaAuthorization(ctx, c);
+            EmitControllersViewsStage.InjectAreaAuthorization(ctx, c); // idempotent rerun
+
+            var result = File.ReadAllText(path);
+            Assert.Contains("using Microsoft.AspNetCore.Authorization;", result);
+            Assert.Matches(@"\[Authorize\(Roles = ""Owner""\)\]\s*public class BrandsController", result);
+            Assert.Single(System.Text.RegularExpressions.Regex.Matches(result, @"\[Authorize"));
+            Assert.DoesNotContain("[AllowAnonymous]", result);
+        }
+        finally { try { Directory.Delete(tempDir, recursive: true); } catch { /* best-effort */ } }
+    }
+
+    [Fact]
+    public void Client_area_scaffold_controller_requires_login_except_index_and_details()
+    {
+        var (ctx, tempDir, path) = ArrangeAuth("Areas/Client/Controllers/ProductsController.cs",
+            "using Microsoft.AspNetCore.Mvc;\n" + CannedScaffold);
+        try
+        {
+            var c = new ControllerSpec { Name = "ProductsController", Area = "Client", File = "Areas/Client/Controllers/ProductsController.cs" };
+            EmitControllersViewsStage.InjectAreaAuthorization(ctx, c);
+            EmitControllersViewsStage.InjectAreaAuthorization(ctx, c);
+
+            var result = File.ReadAllText(path);
+            Assert.Matches(@"\[Authorize\]\s*public class ProductsController", result);
+            Assert.Matches(@"\[AllowAnonymous\]\s*public async Task<IActionResult> Index\(", result);
+            Assert.Matches(@"\[AllowAnonymous\]\s*public async Task<IActionResult> Details\(", result);
+            Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(result, @"\[AllowAnonymous\]").Count);
+            Assert.DoesNotMatch(@"\[AllowAnonymous\]\s*(\[[^\]]+\]\s*)*public async Task<IActionResult> Edit\(", result);
+        }
+        finally { try { Directory.Delete(tempDir, recursive: true); } catch { /* best-effort */ } }
+    }
 }
 
 public class LlmBridgeTests
@@ -1242,6 +1375,164 @@ public class LlmBridgeTests
         var (doc, violations) = LlmBridge.Validate("not json at all", Simple);
         Assert.Null(doc);
         Assert.Contains(violations, v => v.Contains("not valid JSON"));
+    }
+}
+
+// Changelog 141: the `cart` feature could not be used. With `orders` it failed expansion
+// ("duplicate models entry 'CartItem'" - both fragments define CartItem); alone it failed semantic
+// validation (cart.json injected a template CartController with no Cart/Index page). These run the
+// REAL SpecExpandStage over the FaceNote fixture with the feature toggles changed, and require the
+// lock to be written and to re-validate (the stage itself re-loads it).
+public class CartFeatureExpansionTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dps-nn-tests-" + Guid.NewGuid());
+    public CartFeatureExpansionTests() => Directory.CreateDirectory(_dir);
+    public void Dispose() { try { Directory.Delete(_dir, recursive: true); } catch { /* best-effort */ } }
+
+    private System.Text.Json.Nodes.JsonObject Expand(bool cart, bool orders)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Paths.Fixture))!.AsObject();
+        var features = node["features"]!.AsObject();
+        features["cart"] = new System.Text.Json.Nodes.JsonObject { ["enabled"] = cart, ["model"] = "Product" };
+        features["orders"] = new System.Text.Json.Nodes.JsonObject { ["enabled"] = orders, ["model"] = "Product" };
+        var specPath = Path.Combine(_dir, "spec.json");
+        var lockPath = Path.Combine(_dir, "spec.lock.json");
+        File.WriteAllText(specPath, node.ToJsonString());
+
+        var loader = new SpecLoader(Paths.Schema);
+        var spec = loader.Load(specPath);
+        var ctx = new StageContext(spec, VariationResolver.Resolve(spec), _dir, ".",
+            new StateStore(Path.Combine(_dir, "state.json")), TextWriter.Null);
+        new SpecExpandStage(loader, specPath, lockPath, Path.Combine("templates", "features"), null, _ => "n")
+            .RunAsync(ctx).GetAwaiter().GetResult();
+        return System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(lockPath))!.AsObject();
+    }
+
+    private static List<string> Names(System.Text.Json.Nodes.JsonObject lockNode, string section) =>
+        lockNode[section]!.AsArray().Select(x => x!["name"]!.GetValue<string>()).ToList();
+
+    [Fact]
+    public void Cart_alone_expands_to_a_valid_lock_with_a_linked_CartItem_and_no_orders()
+    {
+        var lockNode = Expand(cart: true, orders: false);
+        var models = Names(lockNode, "models");
+        Assert.Single(models, "CartItem");
+        Assert.DoesNotContain("Order", models);
+        Assert.DoesNotContain("OrderItem", models);
+        var cartItem = lockNode["models"]!.AsArray().First(m => m!["name"]!.GetValue<string>() == "CartItem")!;
+        Assert.Contains(cartItem["properties"]!.AsArray(), p => p!["name"]!.GetValue<string>() == "ProductId");
+        Assert.Contains(cartItem["relations"]!.AsArray(), r => r!["target"]!.GetValue<string>() == "Product");
+        // The CartController is emitted by the stage, never injected into spec.controllers.
+        Assert.DoesNotContain(lockNode["controllers"]!.AsArray(),
+            c => c!["name"]!.GetValue<string>() == "CartController" && c["area"] is null);
+    }
+
+    [Fact]
+    public void Cart_with_orders_expands_to_a_valid_lock_with_one_CartItem()
+    {
+        var lockNode = Expand(cart: true, orders: true);
+        var models = Names(lockNode, "models");
+        Assert.Single(models, "CartItem");
+        Assert.Contains("Order", models);
+        Assert.Contains("OrderItem", models);
+    }
+
+    [Fact]
+    public void Cart_and_orders_fragments_define_the_same_CartItem()
+    {
+        var cart = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText("templates/features/cart.json"))!["models"]!.AsArray()
+            .First(m => m!["name"]!.GetValue<string>() == "CartItem");
+        var orders = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText("templates/features/orders.json"))!["models"]!.AsArray()
+            .First(m => m!["name"]!.GetValue<string>() == "CartItem");
+        Assert.True(System.Text.Json.Nodes.JsonNode.DeepEquals(cart, orders),
+            "cart.json and orders.json must define an identical CartItem, or enabling both conflicts");
+    }
+
+    [Fact]
+    public void Merge_still_rejects_a_conflicting_duplicate_model()
+    {
+        var spec = System.Text.Json.Nodes.JsonNode.Parse("""{ "models": [ { "name": "CartItem", "file": "a.cs" } ] }""")!.AsObject();
+        var fragment = System.Text.Json.Nodes.JsonNode.Parse("""{ "models": [ { "name": "CartItem", "file": "b.cs" } ] }""")!.AsObject();
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            SpecExpandStage.MergeFragment(spec, fragment, "x", default, null));
+        Assert.Contains("CartItem", ex.Message);
+    }
+
+    [Fact]
+    public void Merge_skips_an_identical_duplicate_model()
+    {
+        var spec = System.Text.Json.Nodes.JsonNode.Parse("""{ "models": [ { "name": "CartItem", "file": "a.cs" } ] }""")!.AsObject();
+        var fragment = System.Text.Json.Nodes.JsonNode.Parse("""{ "models": [ { "name": "CartItem", "file": "a.cs" } ] }""")!.AsObject();
+        SpecExpandStage.MergeFragment(spec, fragment, "x", default, null);
+        Assert.Single(spec["models"]!.AsArray());
+    }
+}
+
+// Changelog 141: a cart-only project must compile - nothing in the cart surface may reference
+// Order/OrderItem/Checkout, which exist only with `orders`.
+public class CartTemplateTests
+{
+    private static TemplateEngine Engine(bool cart, bool orders, out ProjectSpec spec)
+    {
+        spec = new SpecLoader(Paths.Schema).Load(Paths.Fixture);
+        spec.Features["cart"] = JsonDocument.Parse($$"""{ "enabled": {{(cart ? "true" : "false")}}, "model": "Product" }""").RootElement;
+        spec.Features["orders"] = JsonDocument.Parse($$"""{ "enabled": {{(orders ? "true" : "false")}}, "model": "Product" }""").RootElement;
+        return new TemplateEngine(spec, VariationResolver.Resolve(spec));
+    }
+
+    private static readonly object Extra = new { primary = "Product", price_property = "Price" };
+
+    [Fact]
+    public void Cart_only_controller_has_no_order_code()
+    {
+        var code = Engine(cart: true, orders: false, out _).RenderFile(Path.Combine("templates", "controllers", "cart_controller.sbn"), Extra);
+        Assert.Contains("public async Task<IActionResult> Add(int itemId)", code);
+        Assert.Contains("public async Task<IActionResult> Remove(int id)", code);
+        Assert.DoesNotContain("Checkout", code);
+        Assert.DoesNotContain("Order", code);
+    }
+
+    [Fact]
+    public void Cart_with_orders_controller_keeps_checkout_and_history()
+    {
+        var code = Engine(cart: true, orders: true, out _).RenderFile(Path.Combine("templates", "controllers", "cart_controller.sbn"), Extra);
+        Assert.Contains("Checkout(", code);
+        Assert.Contains("public async Task<IActionResult> Orders()", code);
+        Assert.Contains("OrderDetails(int id)", code);
+    }
+
+    [Fact]
+    public void Cart_only_index_view_has_no_checkout_form()
+    {
+        var code = Engine(cart: true, orders: false, out _).RenderFile(Path.Combine("templates", "views", "cart_index.sbn"), Extra);
+        Assert.DoesNotContain("Checkout", code);
+        Assert.Contains("Общо:", code);
+    }
+
+    [Fact]
+    public void Cart_only_layout_shows_the_cart_badge_but_not_the_orders_link()
+    {
+        var code = Engine(cart: true, orders: false, out _).RenderFile(Path.Combine("templates", "views", "layout.sbn"));
+        Assert.Contains("NavCartContext.CartItems.Count(", code);
+        Assert.DoesNotContain("asp-action=\"Orders\"", code);
+    }
+
+    [Fact]
+    public void Cart_only_card_grid_and_details_offer_add_to_cart()
+    {
+        var engine = Engine(cart: true, orders: false, out var spec);
+        var owner = spec.Controllers.First(c => c.Sorting is { Enabled: true });
+        var model = spec.Models.First(m => m.Name == owner.Model);
+        var page = spec.Views!.Pages.First(p => p.Kind == "cardGrid");
+        var grid = engine.RenderFile(Path.Combine("templates", "views", "card_grid.sbn"), new { owner, model, page });
+        Assert.Contains("asp-controller=\"Cart\" asp-action=\"Add\"", grid);
+    }
+
+    [Fact]
+    public void Neither_feature_means_no_cart_surface()
+    {
+        var code = Engine(cart: false, orders: false, out _).RenderFile(Path.Combine("templates", "views", "layout.sbn"));
+        Assert.DoesNotContain("NavCartContext", code);
     }
 }
 
@@ -1297,7 +1588,7 @@ public class VerifyHelpersTests
     public void Discover_routes_covers_every_cardgrid_and_admintable_and_enabled_feature()
     {
         var spec = new SpecLoader(Paths.Schema).Load(Paths.Fixture);
-        var (pub, authed) = VerifyStage.DiscoverRoutes(spec);
+        var (pub, authed, _) = VerifyStage.DiscoverRoutes(spec);
 
         Assert.Contains("/Client/Products", pub);          // cardGrid -> anonymous
         Assert.Contains("/Admin/Products", authed);        // adminTable -> authed
@@ -1316,7 +1607,7 @@ public class VerifyHelpersTests
             Views = new ViewsSection { Pages = [] },
             Features = new Dictionary<string, JsonElement>(), // nothing enabled
         };
-        var (pub, authed) = VerifyStage.DiscoverRoutes(spec);
+        var (pub, authed, _) = VerifyStage.DiscoverRoutes(spec);
         Assert.DoesNotContain("/Client/Cart", authed);
         Assert.DoesNotContain("/Client/Catalogues", authed);
         Assert.DoesNotContain("/Client/Catalogues/Public", pub);
@@ -1326,10 +1617,47 @@ public class VerifyHelpersTests
     public void Discover_routes_dedupes_and_stays_stable()
     {
         var spec = new SpecLoader(Paths.Schema).Load(Paths.Fixture);
-        var (pub, authed) = VerifyStage.DiscoverRoutes(spec);
+        var (pub, authed, refuse) = VerifyStage.DiscoverRoutes(spec);
         Assert.Equal(pub.Distinct().Count(), pub.Count);
         Assert.Equal(authed.Distinct().Count(), authed.Count);
+        Assert.Equal(refuse.Distinct().Count(), refuse.Count);
     }
+
+    // Changelog 141: verify now checks that an anonymous request to a protected page is refused.
+    // Protected = every adminTable page in an area mapped to an admin role, plus the client feature
+    // pages whose controller is [Authorize] at class level. Public pages must NOT be in the list
+    // (Posts index and the public catalogues are [AllowAnonymous] by design).
+    [Fact]
+    public void Discover_routes_lists_the_pages_anonymous_users_must_be_refused()
+    {
+        var spec = new SpecLoader(Paths.Schema).Load(Paths.Fixture);
+        var (_, _, refuse) = VerifyStage.DiscoverRoutes(spec);
+
+        Assert.Contains("/Admin/Products", refuse);
+        Assert.Contains("/Admin/Brands", refuse);
+        Assert.Contains("/Client/Cart", refuse);
+        Assert.Contains("/Client/Cart/Orders", refuse);
+        Assert.Contains("/Client/Catalogues", refuse);
+        Assert.Contains("/Client/Follows/List", refuse);
+        Assert.DoesNotContain("/Client/Products", refuse);           // cardGrid, public
+        Assert.DoesNotContain("/Client/Posts", refuse);              // Posts index is anonymous
+        Assert.DoesNotContain("/Client/Catalogues/Public", refuse);  // [AllowAnonymous]
+        Assert.DoesNotContain("/", refuse);
+    }
+
+    [Theory]
+    [InlineData(302, "/Identity/Account/Login?ReturnUrl=%2FAdmin%2FProducts", true)]
+    [InlineData(302, "http://127.0.0.1:5000/Identity/Account/Login?ReturnUrl=x", true)]
+    [InlineData(302, "/Identity/Account/AccessDenied?ReturnUrl=x", true)]
+    [InlineData(401, null, true)]
+    [InlineData(403, null, true)]
+    [InlineData(200, null, false)]
+    [InlineData(302, "/", false)]
+    [InlineData(404, null, false)]
+    [InlineData(500, null, false)]
+    public void Anonymous_refusal_means_401_403_or_a_redirect_to_login(int status, string? location, bool refused)
+        => Assert.Equal(refused, VerifyStage.IsAnonymousRefusal((System.Net.HttpStatusCode)status,
+            location is null ? null : new Uri(location, UriKind.RelativeOrAbsolute)));
 }
 
 public class InteractiveSelectionTests : IDisposable

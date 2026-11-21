@@ -64,9 +64,7 @@ renameSync(join(out, `GenesisV6.Cli${exe}`), join(out, `dps-nn${exe}`));
 const copy = (rel) => cpSync(join(repo, rel), join(out, rel), { recursive: true });
 for (const rel of [
   'templates',
-  'feature-templates',
   'spec.schema.json',
-  'images',
   'utils/claude-skills/dps-nn-spec-authoring', // create: the spec-authoring guide in the prompt
   'fixtures/project-spec.facenote.json', //      create: the worked example; GUI: the sample spec
   'seeds/facenote-rich-seed.json', //            GUI: the sample seed (Start works without a key)

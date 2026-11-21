@@ -1,5 +1,7 @@
 <!-- last-verified: 33c4fd4265056f5f769086261ff358cad3d31c5d -->
-# "Спецификации" consolidation + the admin filter convention — design spec
+# Specifications page consolidation + the admin filter convention — design spec
+
+*The page is labelled "Спецификации" (Bulgarian for "Specifications") in the generated apps' UI.*
 
 **Status**: design (Group A5 Opus half). Implementation is the Sonnet half. Index entry:
 [ADR-012](../adr/adr-012-specifications-consolidation-and-filters.md). This doc is the single
@@ -10,7 +12,7 @@ source of truth for the detail.
 The admin surface currently has **two** kinds of "small model" handling and **no** filtering:
 
 - **Join / lookup models** — `CartItem`, `OrderItem`, `PostComment`, `PostVote`, `CatalogueItem`
-  carry `isLookup: true` (set in their `feature-templates/*.json`). Changelog 069 consolidated
+  carry `isLookup: true` (set in their `templates/features/*.json`). Changelog 069 consolidated
   them into a single **read-only** tabbed page, `CharacteristicsController` → `Characteristics/Index`
   ("Характеристики"). Their scaffolded `Admin/{Model}` CRUD controllers still exist and are
   reachable directly; they are just hidden from the admin nav (`layout.sbn` skips

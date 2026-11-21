@@ -1,4 +1,4 @@
-# images/
+# templates/static/
 
 Generic image fallbacks copied into every generated app's `wwwroot/images/` by the scaffold stage
 (`BuildStages.cs`, ADR-011 / `docs/explanation/image-pipeline.md`):

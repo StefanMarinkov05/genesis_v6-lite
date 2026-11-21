@@ -24,13 +24,16 @@ jobs:
         with:
           node-version: "24.x"
 
-      - name: Install pandoc 3.13, XeLaTeX, DejaVu fonts
+      # IBM Plex: the book's type (XeLaTeX) and the diagrams' (mermaid's Chromium) - both by name or
+      # path from the system package. lmodern ships lmodern.sty, which pandoc's template still
+      # loads (fonts-lmodern is only the fonts). texlive-pictures = TikZ, for the cover.
+      - name: Install pandoc 3.13, XeLaTeX, IBM Plex fonts
         run: |
           curl -fsSL -o "$RUNNER_TEMP/pandoc.deb" https://github.com/jgm/pandoc/releases/download/3.13/pandoc-3.13-1-amd64.deb
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends "$RUNNER_TEMP/pandoc.deb" \
             texlive-xetex texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended \
-            fonts-dejavu fonts-lmodern
+            texlive-pictures lmodern fonts-ibm-plex fonts-dejavu
 
       - name: Build handbook
         run: python3 scripts/build-handbook.py --out dist/dps-nn-handbook.pdf

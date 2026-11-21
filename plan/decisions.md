@@ -429,3 +429,11 @@
   spec.meta.language for a DIFFERENT feature (issue #5's follow-up funny-English-worker-names ask) for
   the same reason in reverse - that field is a hard product requirement (Bulgarian-only generated UI),
   not a place to bolt on unrelated tool-console preferences.
+- Changelog 141 (Opus): REVERSES Session 3's "feature/admin route fetches are best-effort" — every
+  declared route must answer 200, and protected routes must refuse anonymous requests. Adding that
+  check exposed missing `[Authorize]` on scaffolded controllers; the stage now stamps it per area.
+- Changelog 141: REVERSES "personalization inject nothing by design" for personalization — still no
+  models, but `features.personalization` now gates the navbar greeting/avatar/profile link.
+- Changelog 141: feature fragments may share a model if the definitions are IDENTICAL (cart/orders
+  share CartItem); a conflicting duplicate still fails expansion. Preset pick is SHA-256, never
+  `GetHashCode()`.

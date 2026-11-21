@@ -288,7 +288,7 @@ expandCmd.SetHandler(async ctx =>
         var loader = new SpecLoader(Path.Combine(genesisRoot, "spec.schema.json"));
         var lockPath = Path.ChangeExtension(spec.FullName, null) + ".lock.json";
         var stage = new SpecExpandStage(loader, spec.FullName, lockPath,
-            Path.Combine(genesisRoot, "feature-templates"),
+            Path.Combine(genesisRoot, "templates", "features"),
             Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") is null && !File.Exists(Llm(outDir).ResponsePath("expand-review"))
                 ? null : Llm(outDir), // review pass only when fillable; deterministic expansion always runs
             Prompt(noInt));
@@ -352,7 +352,7 @@ async Task RunPipelineAsync(FileInfo spec, DirectoryInfo outDir, string? from, s
 
         // Expansion always precedes the rest (idempotent); spec-build only with --notes flow.
         var expand = new SpecExpandStage(loader, spec.FullName, lockPath,
-            Path.Combine(genesisRoot, "feature-templates"), null, Prompt(noInt));
+            Path.Combine(genesisRoot, "templates", "features"), null, Prompt(noInt));
         var preCtx = BuildContext(spec, outDir, useLock: false);
         if (!preCtx.State.IsDone("spec-expand")) { await expand.RunAsync(preCtx); preCtx.State.MarkDone("spec-expand"); }
 

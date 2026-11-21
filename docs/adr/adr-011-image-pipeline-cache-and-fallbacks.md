@@ -13,7 +13,7 @@ emitted (404), and product download failures write a 1×1 PNG rather than a real
 
 **Decision**: redesign the image pipeline along four lines — (a) a **persistent cache** at
 `.image-cache/` in the workspace (cwd; ADR-014 — gitignored, outside `out/`) that survives the per-run folders;
-(b) **shipped generic fallbacks as SVG** (`images/avatar-default.svg`, `images/product-default.svg`),
+(b) **shipped generic fallbacks as SVG** (`templates/static/avatar-default.svg`, `templates/static/product-default.svg`),
 copied into each generated `wwwroot/images/` by a new `ScaffoldStage.CopyStaticAssets` step —
 SVG over binary PNG because a generator repo should carry text, diffable, scalable assets;
 (c) **local-only profile pictures** — the identity seeder stops emitting picsum URLs and seeds

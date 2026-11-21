@@ -52,12 +52,14 @@ with **at least** as many rows as that model's configured count. For each model:
   values. Never invent a ref that wasn't emitted somewhere in this same response.
 - **Every regular property** (not a key, not a foreign key) from the spec's model definition,
   using its declared `type`.
-- **If the model has `images` configured**: add **`imageKeyword`** — 1-2 ENGLISH words suitable
-  for a stock-photo search (e.g. `"red sports car"`). This is the one field that's intentionally
-  English even in a Bulgarian project — it's a search query, not UI text. **Always include it,
-  every row, never skip or leave a model image-less** — the real pipeline's download cache
-  (persistent across regenerates, keyed by provider+keyword) needs a real, specific keyword per
-  row to actually fetch something; an empty/generic keyword just wastes the download.
+- **If the model has `images` configured**: add **`imageKeywords`** — an **array** of 1–2-word ENGLISH
+  stock-photo search phrases. The array length is fixed by the model's `images.mode`: **exactly 1**
+  entry for `"single"`, **2–4** entries for `"multiple"` (one photo each). This is the one field
+  that's intentionally English even in a Bulgarian project — it's a search query, not UI text.
+  **Always include it, every row, never skip or leave a model image-less**, and give each entry a
+  *different* angle on the same item (e.g. `["red sneakers", "sneakers side view", "sneakers on
+  foot"]`) so the photos in one row don't look identical. (The field is `imageKeywords` — plural,
+  array. An older revision of this skill said `imageKeyword`/string; that fails the seed schema.)
 - Every property flagged as a user-reference (name ends in `UserId`, or is otherwise clearly an
   owner/author field) must use one of the seed users' placeholder strings — see below. Never
   invent a user ID or GUID.
@@ -84,7 +86,7 @@ realistically across the available users — not everything owned by `$seedUser:
 4. **Respect each property's `seedHint`** when the spec provides one — it constrains realistic
    ranges/content for that field.
 5. Every parent row gets a unique `refKey`; every child row gets its `parentRef_{Target}`; every
-   image-bearing model's rows get `imageKeyword` — all as described above.
+   image-bearing model's rows get `imageKeywords` — all as described above.
 6. Dates in ISO-8601; decimals as plain JSON numbers (not strings).
 7. User-reference properties use the `$seedUser:N` placeholders — never an invented ID.
 8. **Scenario coverage — make the generated app demoable with zero manual clicking.** If present

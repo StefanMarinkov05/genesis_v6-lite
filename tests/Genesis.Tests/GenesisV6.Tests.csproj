@@ -15,7 +15,6 @@
   <ItemGroup>
     <None Include="..\..\fixtures\**" CopyToOutputDirectory="PreserveNewest" LinkBase="fixtures" />
     <None Include="..\..\templates\**" CopyToOutputDirectory="PreserveNewest" LinkBase="templates" />
-    <None Include="..\..\feature-templates\**" CopyToOutputDirectory="PreserveNewest" LinkBase="feature-templates" />
     <None Include="..\..\spec.schema.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
