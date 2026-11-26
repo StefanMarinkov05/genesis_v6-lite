@@ -627,3 +627,13 @@ Economics added: `T(n) = O(n)` with a 15-20 minute ceiling, 0,20-0,70 € of tok
 Honesty: the chain and the school database are seller-side, not pipeline code — `grep` finds nothing for
 them in `src/`. Recorded in changelog 148.
 
+## Session 40 — the agent layer is part of the project
+
+Correction from the author: there is one **master agent** orchestrating the workflow, an **evaluator
+agent** that scans documents (and code) for low-quality AI output, and the workers run **in parallel**
+without being recreated per product. They keep memory as RAG plus fine-tuning, globally and per school;
+the configuration is private because it touches personal data. Chapters 1, 6, 12, 14 and 23 rewritten
+accordingly; the "seller-side tooling" phrasing is gone. Chapter 14 now names five gates, not four.
+
+Also: nine fresh comparisons in the retelling, each used once. Changelog 149.
+
