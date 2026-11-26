@@ -609,3 +609,21 @@ the programmer and to Claude. The political disclaimer is gone.
 Lesson: a running formula is a tic, not a voice. One device per chapter, and the boast survives; the
 same device in twenty-seven chapters and the book turns into a rally. Recorded in changelog 147.
 
+## Session 39 — the delivery cycle and the per-school memory
+
+The author described what the product actually does around the generator, and the Bulgarian retelling
+now says it: a chain of agents (Sonnet for the spec, Haiku for the seed, three more Sonnets for
+presentation / documentation / questions, a final Sonnet that runs the app, walks it with Playwright MCP,
+collects code and draws the schema in LaTeX, then packages everything into a private cloud for a
+link-and-key handover against a deposit). The terminology list is one recycled file; the defence material
+lives outside the project folder on purpose; documentation stays out of the public repo (personal data,
+GDPR).
+
+New: a local order/seed database keyed by **school**, consulted before choosing the seed, the design
+preset and the document format, so one school never receives two similar projects across years.
+Economics added: `T(n) = O(n)` with a 15-20 minute ceiling, 0,20-0,70 € of tokens for the whole chain,
+200-400 € to the buyer with the four factors that move it.
+
+Honesty: the chain and the school database are seller-side, not pipeline code — `grep` finds nothing for
+them in `src/`. Recorded in changelog 148.
+
