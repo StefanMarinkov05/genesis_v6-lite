@@ -43,3 +43,25 @@ held back for the author's approval, because they carry either a hyperbole or a 
 ## Verification
 
 `--lang trump-bg` → 118 pages, no missing glyphs, zero em dashes.
+
+## Addendum — jabs allowed at competitors and tools
+
+The author allowed Trump-style insults aimed at **other generators, diploma vendors, tools, bugs and
+techniques**, and kept the ban on anything aimed at buyers, teachers or examiners without explicit
+approval. Five jabs added, each once:
+
+| Chapter | Line |
+|---|---|
+| 3 | most demos are made to look good in a screenshot; this one is made to survive a question |
+| 7 | model-written code without review is a lottery with someone else's budget |
+| 9 | "my generator works without compiling" — then ask how many times it has run what it emitted |
+| 12 | technology chosen because it is on the CV is not architecture, it is a CV with a database |
+| 22 | "качествено изпълнение" is a phrase, not a project — most ads stop there |
+
+Plus four previously held lines, added after weighing them against the ban: the calm-doesn't-compile
+line (ch. 15), the musaka line aimed at AI text rather than at people (ch. 14), the ego line (ch. 1) and
+the defence-as-a-conversation line (ch. 23).
+
+Still **not** added, awaiting explicit approval: "проверяващият помни три от сто проекта" and
+"академичната честност е като диетата". Both point at examiners or students, which the author asked to
+approve personally.
