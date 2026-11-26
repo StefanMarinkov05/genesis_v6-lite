@@ -271,7 +271,8 @@ PARTS_TRUMP = ["The Big, Beautiful Overview", "Using It — So Easy", "Inside �
 
 # The Bulgarian Trump edition: the same navy-and-gold book, but the cover's stripes are the tricolour
 # (red, green, white, bottom up) under the same gold band and white stars.
-BADGE_TRUMP_BG = BADGE_TRUMP.replace("THE TRUMP EDITION", "ИЗДАНИЕТО ТРЪМП")
+# The Bulgarian retelling keeps the cover voice but not the edition label: it is documentation.
+BADGE_TRUMP_BG = BADGE_TRUMP.replace("THE TRUMP EDITION", "ИЗДАНИЕ ЗА ПОБЕДИТЕЛИ")
 STRIPE_TRUMP_BG = "\n".join(
     rf"  \fill[{c}] ([yshift={i * 0.52:.2f}cm]current page.south west) "
     rf"rectangle ([yshift={(i + 1) * 0.52:.2f}cm]current page.south east);"
@@ -352,14 +353,14 @@ LANGUAGES = {
     ),
     "trump-bg": dict(
         dir="trump-bg", title="ДПС-НН", parts=PARTS_TRUMP_BG,
-        subtitle=r"Генератор на ASP.NET Core MVC приложения по спецификация.\\[3pt]Най-добрият. Повярвайте ми.",
+        subtitle=r"Генератор на дипломни проекти: ASP.NET Core MVC приложения по спецификация.\\[3pt]Най-добрият. Повярвайте ми.",
         toplabel=r"ДА~НАПРАВИМ~ДИПЛОМНИТЕ~ПРОЕКТИ~ОТНОВО~ВЕЛИКИ",
-        runhead=r"ДПС-НН \textperiodcentered{} Изданието Тръмп", badge=BADGE_TRUMP_BG,
+        runhead="ДПС-НН", badge=BADGE_TRUMP_BG,
         handbook="Невероятният справочник",
         handbook_upper=r"НЕВЕРОЯТНИЯТ\hspace{0.5em}СПРАВОЧНИК",
         part_label="ЧАСТ", chapter_label="ГЛАВА", toc="Съдържание — само победители",
         tags=r"Обяснение \textperiodcentered{} Справочник \textperiodcentered{} Ръководства \textperiodcentered{} ADR \textperiodcentered{} Повярвайте ми",
-        license="MIT лиценз — най-добрият лиценз", version_suffix="  ·  изданието Тръмп, на български",
+        license="MIT лиценз — най-добрият лиценз", version_suffix="  ·  българско издание",
         stripe=STRIPE_TRUMP_BG, palette=PALETTE_TRUMP, mermaid=MERMAID_TRUMP, fonts=TRUMP_FONTS,
         out="dist/dps-nn-handbook-trump-bg.pdf", deep_dives=None,
         logo_file="gui/src/renderer/public/logo/MDGA_bg.png", **TRUMP_LOGO,

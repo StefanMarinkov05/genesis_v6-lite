@@ -597,3 +597,15 @@ when run unlicensed (Azis music, self-modifying source so it won't compile, heav
 all removed by the clean build), and a Границите scope note (confined to the demo; book documents
 behaviour not the removal-tool/self-mod implementation). Same facts + safety boundary as bg,
 Trump register. Built --lang trump-bg: 111 pages, 0 Missing character warnings. Other editions untouched.
+
+## Session 38 — the Bulgarian retelling learns to sound like a book
+
+`docs/handbook/trump-bg/` (26 chapters) rewritten at the rhetorical layer, facts untouched:
+`Господине…` 27 → 0, `хора` 82 → 14, `повярвайте ми` 21 → 1, `Тръмп` as an edition label 5 → 0.
+The full name is now expanded (Дипломни проекти за серсеми: Нова надежда), the 50+ defended projects
+since summer 2024 are stated in the preface and chapter 1, and eight chapters carry earned credit to
+the programmer and to Claude. The political disclaimer is gone.
+
+Lesson: a running formula is a tic, not a voice. One device per chapter, and the boast survives; the
+same device in twenty-seven chapters and the book turns into a rally. Recorded in changelog 147.
+

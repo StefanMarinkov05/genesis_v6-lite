@@ -68,6 +68,7 @@ HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
 MERMAID = re.compile(r"^```mermaid\s*\n(.*?)^```\s*$", re.S | re.M)
 LINK = re.compile(r"(!?\[[^\]]*\])\(([^)\s]+)\)")
 H1 = re.compile(r"^# (.+)$", re.M)
+IMAGE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)(?:\{width=([\d.]+)%\})?")
 
 # Off when a caller (build-handbook2.py) assembles a subset from a different manuscript directory.
 UNLISTED_NOTE = True
@@ -199,7 +200,23 @@ def assemble(parts, work: Path, mmdc: list[str], pptr: Path) -> str:
                 text = text.replace(old, new)
             if TEXT_TRANSFORM_FN is not None:
                 text = TEXT_TRANSFORM_FN(text)
+            def image(m: re.Match) -> str:
+                # emitted as raw LaTeX: pandoc's own image handling copies the file to a temp dir,
+                # which xetex then refuses to measure.
+                target, pct = m.group(1), m.group(2)
+                if re.match(r"^[a-z]+:", target):
+                    return m.group(0)
+                resolved = (ROOT / target).resolve() if target.startswith("/") \
+                    else ((ROOT / doc).parent / target).resolve()
+                width = f"{float(pct) / 100:.2f}\\linewidth" if pct else r"0.60\linewidth"
+                return ("```{=latex}\n\\begin{center}\\includegraphics[width=" + width +
+                        "]{" + resolved.as_posix() + "}\\end{center}\n```")
+
+            text = IMAGE.sub(image, text)
+
             text = rewrite_links(text, doc, anchors)
+
+
 
             def diagram(m: re.Match) -> str:
                 nonlocal n_diagrams
