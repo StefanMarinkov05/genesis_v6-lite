@@ -65,3 +65,30 @@ the defence-as-a-conversation line (ch. 23).
 Still **not** added, awaiting explicit approval: "проверяващият помни три от сто проекта" and
 "академичната честност е като диетата". Both point at examiners or students, which the author asked to
 approve personally.
+
+## Addendum — approved lines, and a rebalance toward the register itself
+
+The author approved both held lines and gave the steer that matters for the rest of this edition:
+
+> "не препълвай проекта с фрази. фокуса да е върху тръмп - арогантни, надменни, самовлюбени, нахални,
+> подли, обидни; другите сравнения са допълнение"
+
+**Added (approved):** the examiner-arithmetic line (ch. 23, in *Доставката*, paired with the
+"ще ви омръзне" paragraph) and the academic-honesty line (ch. 22, moved to the "is the owner ready to
+explain generated code" question, where it belongs).
+
+**Removed (three generic sayings):** "words are tools in a bag" (ch. 24), "a decision without context is
+an anecdote without a punchline" (ch. 25), "the two layouts are a narrow-gauge railway" (ch. 16). They
+were proverbs, not this book's voice.
+
+**Added (register first, not folklore):**
+
+| Chapter | Line |
+|---|---|
+| 1 | "ще прозвучи нескромно - нескромно е, защото е вярно" |
+| 9 | "никой не строи конвейер като този - това не е скромност, това е сравнение" |
+| 14 | tests are not for show; they exist so nobody has to apologise later |
+| 23 | competitors sell hope with an invoice; here a project with verification is sold |
+
+Net effect: 26 flourish lines across 14 of 26 chapters on 118 pages — about one per four pages — with
+the arrogance and self-absorption carrying the tone and the folk metaphors demoted to punctuation.

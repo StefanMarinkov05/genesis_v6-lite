@@ -637,3 +637,16 @@ accordingly; the "seller-side tooling" phrasing is gone. Chapter 14 now names fi
 
 Also: nine fresh comparisons in the retelling, each used once. Changelog 149.
 
+## Session 41 — humour: register first, folklore second
+
+The retelling got 26 flourish lines across 14 chapters on 118 pages (one per ~4 pages): Bulgarian
+metaphors (grandmother's recipe, homemade-wine label, village theatre, umbrella in the boot, tavern
+menu, the wolf proverb), jabs allowed at competitors, diploma vendors, tools and techniques, and the
+Trump register itself - arrogance, self-absorption, cheek ("нескромно е, защото е вярно", "това не е
+скромност, това е сравнение", "надежда с фактура").
+
+Two lines that touch examiners/students were held for approval and then approved by the author; three
+generic proverbs were removed for being out of voice. Standing rule for this edition: no line aimed at
+buyers, teachers or examiners without explicit approval; competitors and tools are fair game.
+Changelog 150 (three addenda).
+
