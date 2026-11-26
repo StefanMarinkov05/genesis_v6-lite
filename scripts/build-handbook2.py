@@ -277,9 +277,9 @@ STRIPE_TRUMP_BG = "\n".join(
     rf"  \fill[{c}] ([yshift={i * 0.52:.2f}cm]current page.south west) "
     rf"rectangle ([yshift={(i + 1) * 0.52:.2f}cm]current page.south east);"
     for i, c in enumerate(("red!85!black", "green!55!black", "white"))) + "\n" + STRIPE_TRUMP.split("\n", 13)[13]
-PARTS_TRUMP_BG = ["Големият, прекрасен преглед", "Използване — толкова лесно",
-                  "Отвътре — там, където става всичко", "Архитектура — най-добрата",
-                  "Задълбочени глави — много дълбоки", "Справочник — само победители"]
+PARTS_TRUMP_BG = ["Големият, прекрасен преглед", "Използване - толкова лесно",
+                  "Отвътре - там, където става всичко", "Архитектура - най-добрата",
+                  "Задълбочени глави - много дълбоки", "Справочник - само победители"]
 
 TRUMP_LOGO = dict(
     logo="mdga", header_extra="",
@@ -358,9 +358,9 @@ LANGUAGES = {
         runhead="ДПС-НН", badge=BADGE_TRUMP_BG,
         handbook="Невероятният справочник",
         handbook_upper=r"НЕВЕРОЯТНИЯТ\hspace{0.5em}СПРАВОЧНИК",
-        part_label="ЧАСТ", chapter_label="ГЛАВА", toc="Съдържание — само победители",
+        part_label="ЧАСТ", chapter_label="ГЛАВА", toc="Съдържание - само победители",
         tags=r"Обяснение \textperiodcentered{} Справочник \textperiodcentered{} Ръководства \textperiodcentered{} ADR \textperiodcentered{} Повярвайте ми",
-        license="MIT лиценз — най-добрият лиценз", version_suffix="  ·  българско издание",
+        license="MIT лиценз - най-добрият лиценз", version_suffix="  ·  българско издание",
         stripe=STRIPE_TRUMP_BG, palette=PALETTE_TRUMP, mermaid=MERMAID_TRUMP, fonts=TRUMP_FONTS,
         out="dist/dps-nn-handbook-trump-bg.pdf", deep_dives=None,
         logo_file="gui/src/renderer/public/logo/MDGA_bg.png", **TRUMP_LOGO,

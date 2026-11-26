@@ -59,3 +59,19 @@ pdftotext … | grep -c "Тръмп\|Господине"            # 0, 0
 ```
 Covers and body pages rendered to PNG and inspected (badge, tricolour band, 50-project paragraph in
 place). No other edition touched.
+
+## Addendum - typography and the name map
+
+- **Em dashes removed** (458 of them, incl. en dashes) in favour of a plain hyphen, along with the
+  four furniture strings that carry one (part titles, contents title, licence line). The built book
+  now contains zero `—`; verified with `pdftotext`.
+- **The acronym is counted correctly**: ДПС-НН is **five** letters and one hyphen, not four.
+- **The name map is now the real one**, in the preface and in chapter 1's naming table: **ДПС-НН is
+  the agent**; **Genesis** is one of the tools under it (the pipeline that builds the application);
+  the other two tools are the LLMs **Sonnet** and **Haiku**, which write the input files (spec and
+  seed). Previously the book said Genesis *was* the same product under an English name, which
+  contradicted how the toolchain is actually split.
+- Title page states the product's promise: it generates diploma projects, ASP.NET Core MVC
+  applications; the original handbook-v2 mark is printed under the preface introduction.
+
+Rebuilt: 112 pages, no missing glyphs, no em dash in the extracted text.
