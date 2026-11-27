@@ -363,6 +363,14 @@ LANGUAGES = {
         license="MIT лиценз - най-добрият лиценз", version_suffix="  ·  българско издание",
         stripe=STRIPE_TRUMP_BG, palette=PALETTE_TRUMP, mermaid=MERMAID_TRUMP, fonts=TRUMP_FONTS,
         out="dist/dps-nn-handbook-trump-bg.pdf", deep_dives=None,
+        cover_name=r"Дипломни проекти за серсеми: Нова надежда",
+        closing=dict(
+            title="ДПС-НН",
+            name=r"Дипломни проекти за серсеми: Нова надежда",
+            line=r"Над петдесет защитени проекта от лятото на 2024 година насам."
+                 r"\\ Нито един провал, за който да се знае.",
+            foot=r"Край. Сега идете да си защитите проекта.",
+        ),
         logo_file="gui/src/renderer/public/logo/MDGA_bg.png", **TRUMP_LOGO,
     ),
 }
@@ -536,6 +544,19 @@ def main() -> None:
     if lang.get("logo_file"):
         bh.LOGO = (bh.ROOT / lang["logo_file"]).resolve()
     bh.COVERLOGOSTYLE = lang.get("cover_logo_style", "")
+    bh.BOOK_COVER_NAME = lang.get("cover_name", "")
+    closing = lang.get("closing")
+    if closing:
+        bh.CLOSING_PAGE = True
+        bh.END_TOP = lang.get("closing_top", lang.get("palette", {}).get("navyC", bh.END_TOP))
+        bh.END_BOTTOM = lang.get("closing_bottom", lang.get("palette", {}).get("navyA", bh.END_BOTTOM))
+        bh.END_STRIPE = lang.get("stripe", "")
+        bh.END_LOGO = lang.get("cover_logo", "")
+        bh.END_LOGOSTYLE = lang.get("cover_logo_style", "")
+        bh.END_TITLE = closing["title"]
+        bh.END_NAME = closing["name"]
+        bh.END_LINE = closing["line"]
+        bh.END_FOOT = closing["foot"]
     bh.COVERLOGO = lang["cover_logo"]
     bh.FOOTLOGO = lang["foot_logo"]
     bh.BOOK_HANDBOOK = handbook

@@ -650,3 +650,15 @@ generic proverbs were removed for being out of voice. Standing rule for this edi
 buyers, teachers or examiners without explicit approval; competitors and tools are fair game.
 Changelog 150 (three addenda).
 
+## Session 42 — title-page name and a closing plate
+
+Two builder hooks added: `BOOK_COVER_NAME` (a conditional line under the cover title, so editions
+without a spelled-out name get no stray line break) and `CLOSING_PAGE` with a `CLOSING` template
+(full-bleed gradient, national band, logo, abbreviation, full name, one line of record, sign-off,
+version). The Bulgarian retelling sets both; it now ends on a proper closing page at 119 pages.
+
+Traps worth remembering: `yshift` from `current page.south` moves down for negative values; the closing
+plate needs `\definecolor[HTML]` because it takes hex, while the cover takes palette names; a
+conditional LaTeX fragment must be substituted as a whole block, never as an empty argument between
+`\\` breaks. Changelog 151.
+

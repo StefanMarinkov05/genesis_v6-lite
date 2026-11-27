@@ -395,7 +395,8 @@ COVER = r"""
   \node[anchor=north east] at ([xshift=-2.4cm,yshift=-1.35cm]current page.north east) {@COVERBADGE@};
   \node[@COVERLOGOSTYLE@] at ([yshift=5.0cm]current page.center) {@COVERLOGO@};
   \node[anchor=north,align=center,text width=0.84\paperwidth] at ([yshift=-1.0cm]current page.center) {%
-    {\displayfont@TITLESIZE@\selectfont\color{white}@TITLE@}\\[22pt]
+    {\displayfont@TITLESIZE@\selectfont\color{white}@TITLE@}\\[6pt]
+    @COVERNAMELINE@%
     {\sffamily\Large\color{accent}\addfontfeatures{LetterSpace=22}@HANDBOOKUPPER@}\\[14pt]
     {\lightsans\large\color{softtext}@SUBTITLE@}};
   \draw[accent,line width=0.8pt] ([xshift=2.4cm,yshift=3.4cm]current page.south west) -- ([xshift=-2.4cm,yshift=3.4cm]current page.south east);
@@ -530,8 +531,41 @@ COVERLOGOSTYLE = ""  # node options, e.g. a light plate behind dark artwork
 FOOTLOGO = r"""\newcommand{\footlogo}{\raisebox{-5mm}{\tikz\node[opacity=0.92,inner sep=0pt]{\includegraphics[height=16mm]{@LOGO@}};}}"""
 COVER_TITLE_SIZE = r"\fontsize{50}{56}"  # per-edition: the galactic title needs less
 BOOK_COVER_TITLE = ""  # defaults to BOOK_TITLE
+BOOK_COVER_NAME = ""   # the spelled-out name, under the title
 BOOK_META_TITLE = ""   # defaults to BOOK_TITLE
 BOOK_HANDBOOK_META = ""  # defaults to BOOK_HANDBOOK (PDF metadata stays plain text)
+
+
+CLOSING = r"""
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+  \definecolor{endtop}{HTML}{@ENDTOP@}%
+  \definecolor{endbottom}{HTML}{@ENDBOTTOM@}%
+  \shade[top color=endtop, bottom color=endbottom] (current page.north west) rectangle (current page.south east);
+  @ENDSTRIPE@
+  \node[@ENDLOGOSTYLE@] at ([yshift=5.4cm]current page.center) {@ENDLOGO@};
+  \node[anchor=north,align=center,text width=0.82\paperwidth] at ([yshift=0.9cm]current page.center) {%
+    {\displayfont\fontsize{46}{52}\selectfont\color{white}@ENDTITLE@}\\[12pt]
+    {\sffamily\large\color{accent}\addfontfeatures{LetterSpace=6}@ENDNAME@}\\[24pt]
+    {\lightsans\large\color{softtext}@ENDLINE@}};
+  \draw[accent,line width=0.8pt] ([xshift=3.4cm,yshift=4.6cm]current page.south west) -- ([xshift=-3.4cm,yshift=4.6cm]current page.south east);
+  \node[anchor=north,align=center,text width=0.82\paperwidth,font=\sffamily\normalsize] at ([yshift=4.2cm]current page.south) {%
+    {\color{white}@ENDFOOT@}\\[5pt]{\color{softtext}@ENDVERSION@}};
+\end{tikzpicture}
+\end{titlepage}
+"""
+
+CLOSING_PAGE = False    # set by an edition that wants a full-bleed final plate
+END_TOP = "1A3166"   # hex, not a palette name: the closing plate defines its own
+END_BOTTOM = "0A1430"
+END_STRIPE = ""
+END_LOGO = ""
+END_LOGOSTYLE = ""
+END_TITLE = ""
+END_NAME = ""
+END_LINE = ""
+END_FOOT = ""
 
 COVER_TOP = "navyC"
 COVER_BOTTOM = "navyA"
@@ -570,6 +604,9 @@ def main() -> None:
                       .replace("@HANDBOOKUPPER@", BOOK_HANDBOOK_UPPER)
                       .replace("@FOOTLOGO@", FOOTLOGO)
                       .replace("@LOGO@", LOGO.as_posix()), encoding="utf-8")
+    # the spelled-out name sits under the title, but only if an edition provides one
+    name = BOOK_COVER_NAME.strip()
+    nameline = r"{\sffamily\large\color{white}" + name + r"}\\[12pt]" + "\n    " if name else ""
     cover = work / "cover.tex"
     cover.write_text(COVER.replace("@AUTHOR@", AUTHOR)
                      .replace("@COVERLOGOSTYLE@", COVERLOGOSTYLE)
@@ -577,6 +614,7 @@ def main() -> None:
                      .replace("@TOPLABEL@", BOOK_TOPLABEL)
                      .replace("@HANDBOOKUPPER@", BOOK_HANDBOOK_UPPER)
                      .replace("@TITLE@", BOOK_COVER_TITLE or BOOK_TITLE)
+                     .replace("@COVERNAMELINE@", nameline)
                      .replace("@TITLESIZE@", COVER_TITLE_SIZE)
                      .replace("@SUBTITLE@", BOOK_SUBTITLE)
                      .replace("@COVERBADGE@", COVER_BADGE)
@@ -585,6 +623,16 @@ def main() -> None:
                      .replace("@COVERTAGS@", BOOK_COVER_TAGS)
                      .replace("@LICENSELABEL@", BOOK_LICENSE_LABEL)
                      .replace("@VERSION@", version_line()), encoding="utf-8")
+    endpage = None
+    if CLOSING_PAGE:
+        endpage = work / "endpage.tex"
+        endpage.write_text(CLOSING.replace("@ENDTOP@", END_TOP).replace("@ENDBOTTOM@", END_BOTTOM)
+                           .replace("@ENDSTRIPE@", END_STRIPE)
+                           .replace("@ENDLOGOSTYLE@", END_LOGOSTYLE)
+                           .replace("@ENDLOGO@", END_LOGO.replace("@LOGO@", LOGO.as_posix()))
+                           .replace("@ENDTITLE@", END_TITLE).replace("@ENDNAME@", END_NAME)
+                           .replace("@ENDLINE@", END_LINE).replace("@ENDFOOT@", END_FOOT)
+                           .replace("@ENDVERSION@", version_line()), encoding="utf-8")
     lua = work / "handbook.lua"
     lua.write_text(FILTER, encoding="utf-8")
     theme = work / "syntax.theme"
@@ -597,6 +645,7 @@ def main() -> None:
         "--pdf-engine=xelatex", "--toc", "--toc-depth=1", "--top-level-division=chapter",
         "--syntax-highlighting", str(theme),
         "-H", str(header), "-B", str(cover), "--lua-filter", str(lua),
+        *(["-A", str(endpage)] if endpage else []),
         # No title metadata: the cover replaces \maketitle (pandoc's \subtitle would append to it).
         "-V", f"title-meta={(BOOK_META_TITLE or BOOK_TITLE)} - {(BOOK_HANDBOOK_META or BOOK_HANDBOOK)}", "-V", f"author-meta={AUTHOR}",
         "-V", "documentclass=report", "-V", "classoption=oneside", "-V", "fontsize=10pt",
