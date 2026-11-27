@@ -41,3 +41,10 @@ For the Bulgarian retelling:
   above the tricolour band.
 - English edition rebuilt as a regression check: 98 pages, text diff is only the version hash and one
   table reflow — no content change.
+
+## Scope note
+
+Only the Bulgarian retelling was meant to change. The English edition was rebuilt once as a regression
+check, which replaced its committed PDF; that file was restored byte-for-byte to its previous state
+(`md5` identical to the build before this work) and the restore is its own commit. `bg`, `de` and
+`galactic` were never rebuilt.
